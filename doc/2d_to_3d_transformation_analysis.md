@@ -136,7 +136,7 @@ points = torch.cat(
 **这是2D到3D转换的核心公式**:
 - `points[..., :2, :]` 是图像坐标 `(u, v)`
 - `points[..., 2:3, :]` 是深度值 `d`
-- 变换公式: `x = u * d / fx`, `y = v * d / fy`, `z = d`
+- 变换公式: `x = (u - cx) * d / fx`, `y = (v - cy) * d / fy`, `z = d`
 - 其中 `fx, fy` 是相机内参的焦距
 
 ```python
