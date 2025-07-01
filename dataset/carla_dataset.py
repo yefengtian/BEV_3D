@@ -3,7 +3,9 @@ from os import path as osp
 import mmcv
 import numpy as np
 import pyquaternion
+from mmdet3d.datasets import DATASETS
 
+@DATASETS.register_module()
 class CarlaDataset():
     OD_CLASSES_RAW = ('vehicle', 'pedestrian', 'building', 'fence', 'pole', 'road',
                         'sidewalk', 'traffic_sign', 'traffic_light', 'tree', 'wall', 'sky',

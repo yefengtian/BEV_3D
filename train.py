@@ -7,6 +7,7 @@ BEV 3D感知模型训练脚本
 import os
 import sys
 import argparse
+import copy
 import torch
 import mmcv
 from mmcv import Config
@@ -14,8 +15,12 @@ from mmdet.utils import setup_multi_processes, compat_cfg
 from mmdet3d.apis import train_model
 from mmdet3d.datasets import build_dataset
 from mmdet3d.models import build_model
-from mmcv.runner import load_checkpoint, save_checkpoint
+from mmcv.runner import load_checkpoint, save_checkpoint, build_optimizer
 from mmcv.parallel import MMDataParallel, MMDistributedDataParallel
+from mmcv.runner import init_dist
+
+# 导入自定义数据集
+import dataset.carla_dataset
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a BEV 3D perception model')
@@ -80,6 +85,12 @@ def main():
     if args.autoscale_lr:
         cfg.optimizer['lr'] = cfg.optimizer['lr'] * len(cfg.gpu_ids) / 8
 
+    # 确保数据配置参数存在
+    if not hasattr(cfg, 'samples_per_gpu'):
+        cfg.samples_per_gpu = 4
+    if not hasattr(cfg, 'workers_per_gpu'):
+        cfg.workers_per_gpu = 4
+
     # 创建输出目录
     mmcv.mkdir_or_exist(os.path.abspath(cfg.work_dir))
 
@@ -103,44 +114,8 @@ def main():
     # 添加数据集到模型
     model.CLASSES = datasets[0].CLASSES
 
-    # 创建数据加载器
-    data_loaders = [
-        build_dataloader(
-            dataset,
-            cfg.data.samples_per_gpu,
-            cfg.data.workers_per_gpu,
-            len(cfg.gpu_ids),
-            dist=distributed,
-            seed=cfg.seed) for dataset in datasets
-    ]
-
     # 设置优化器
     optimizer = build_optimizer(model, cfg.optimizer)
-
-    # 设置学习率调度器
-    lr_config = cfg.get('lr_config', None)
-    if lr_config is not None:
-        lr_config = copy.deepcopy(lr_config)
-        lr_config['step'] = [step * len(data_loaders[0]) for step in lr_config['step']]
-        runner.register_lr_hook(lr_config)
-
-    # 设置检查点配置
-    checkpoint_config = cfg.get('checkpoint_config', None)
-    if checkpoint_config is not None:
-        checkpoint_config = copy.deepcopy(checkpoint_config)
-        checkpoint_config['interval'] = checkpoint_config['interval'] * len(data_loaders[0])
-
-    # 设置日志配置
-    log_config = cfg.get('log_config', None)
-    if log_config is not None:
-        log_config = copy.deepcopy(log_config)
-        log_config['interval'] = log_config['interval'] * len(data_loaders[0])
-
-    # 设置评估配置
-    evaluation = cfg.get('evaluation', None)
-    if evaluation is not None:
-        evaluation = copy.deepcopy(evaluation)
-        evaluation['interval'] = evaluation['interval'] * len(data_loaders[0])
 
     # 开始训练
     train_model(

@@ -129,8 +129,8 @@ model = dict(
 )
 
 # Data
-dataset_type = 'OfflineImageDataset'
-data_root = 'data/offline_images/'
+dataset_type = 'CarlaDataset'
+data_root = 'data_old/offline_images/'
 
 file_client_args = dict(backend='disk')
 
@@ -195,9 +195,11 @@ test_pipeline = [
         ])
 ]
 
+# Data settings
+samples_per_gpu = 4
+workers_per_gpu = 4
+
 data = dict(
-    samples_per_gpu=4,
-    workers_per_gpu=4,
     train=dict(
         type=dataset_type,
         data_root=data_root + 'train/',
