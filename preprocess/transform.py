@@ -184,6 +184,7 @@ class LoadAnnotationsBEVDepth():
                                  post_trans, bda_rot)
         return results
     
+
 class Collect3D(object):
     def __init__(
         self,
@@ -202,10 +203,13 @@ class Collect3D(object):
         # repeated_img_metas = [img_metas[key] for _ in range(6)]
         data['img_metas'] = [DC([[img_metas]], cpu_only=True)]
         # results['gt_depth'] = None
-        results['voxel_semantics'] = None
-        results['parkinglot_cat'] = None
-        results['parkinglot_sts'] = None
-        results['parkinglot_geom'] = None
+        # 确保这些字段存在，但不覆盖已有的值
+        if 'parkinglot_cat' not in results:
+            results['parkinglot_cat'] = None
+        if 'parkinglot_sts' not in results:
+            results['parkinglot_sts'] = None
+        if 'parkinglot_geom' not in results:
+            results['parkinglot_geom'] = None
         for key in self.keys:
             data[key] = results[key]
         data['img_inputs'] = [list(data['img_inputs'])]
@@ -228,6 +232,7 @@ class TransformationFactory:
             elif config['type'] == 'LoadAnnotationsBEVDepth':
                 transform = LoadAnnotationsBEVDepth(config['bda_aug_conf'])
                 results = transform(results)
+
             elif config['type'] == 'MultiScaleFlipAug3D':
                 keys=['img_inputs', 'voxel_semantics', 'parkinglot_cat','parkinglot_sts', 'parkinglot_geom']
                 transform = Collect3D(keys=keys)

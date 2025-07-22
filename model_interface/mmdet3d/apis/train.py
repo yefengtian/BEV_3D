@@ -207,8 +207,8 @@ def train_detector(model,
     data_loaders = [
         build_mmdet_dataloader(
             ds,
-            cfg.data.samples_per_gpu,
-            cfg.data.workers_per_gpu,
+            cfg.data.train_dataloader.samples_per_gpu,
+            cfg.data.train_dataloader.workers_per_gpu,
             # `num_gpus` will be ignored if distributed
             num_gpus=len(cfg.gpu_ids),
             dist=distributed,
@@ -294,7 +294,7 @@ def train_detector(model,
         val_dataloader = build_mmdet_dataloader(
             val_dataset,
             samples_per_gpu=val_samples_per_gpu,
-            workers_per_gpu=cfg.data.workers_per_gpu,
+            workers_per_gpu=cfg.data.train_dataloader.workers_per_gpu,
             dist=distributed,
             shuffle=False)
         eval_cfg = cfg.get('evaluation', {})

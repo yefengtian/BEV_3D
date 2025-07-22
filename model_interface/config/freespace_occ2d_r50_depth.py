@@ -222,7 +222,7 @@ test_data_config = dict(
     pipeline=test_pipeline,
     ann_file=data_root + 'test_30.pkl')
 
-work_dir = '/home/zbz/ws/BEVParking/work_dirs/freespace_occ2d_r50_depth_1127'
+# work_dir = '/home/zbz/ws/BEVParking/work_dirs/freespace_occ2d_r50_depth_1127'
 
 data = dict(
     samples_per_gpu=6,
@@ -261,6 +261,6 @@ custom_hooks = [
     # ),
 ]
 
-load_from = "ckpts/bevdet-r50-cbgs.pth"
+# load_from = "ckpts/bevdet-r50-cbgs.pth"
 evaluation = dict(interval=1, start=301, pipeline=test_pipeline)
 checkpoint_config = dict(interval=1, max_keep_ckpts=5)

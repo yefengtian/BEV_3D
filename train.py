@@ -10,17 +10,26 @@ import argparse
 import copy
 import torch
 import mmcv
+import copy
 from mmcv import Config
-from mmdet.utils import setup_multi_processes, compat_cfg
+from mmdet3d.utils import setup_multi_processes, compat_cfg
 from mmdet3d.apis import train_model
 from mmdet3d.datasets import build_dataset
+from mmdet3d.datasets import build_dataloader
+from mmdet3d.datasets import CarlaDataset
 from mmdet3d.models import build_model
-from mmcv.runner import load_checkpoint, save_checkpoint, build_optimizer
+from mmcv.runner import load_checkpoint, save_checkpoint, build_optimizer, init_dist
 from mmcv.parallel import MMDataParallel, MMDistributedDataParallel
-from mmcv.runner import init_dist
 
-# 导入自定义数据集
-import dataset.carla_dataset
+# 导入自定义组件以确保注册
+import model_interface.mmdet3d.datasets.pipelines.loading
+import model_interface.mmdet3d.datasets.carla_dataset
+
+from mmdet3d.datasets import DATASETS, PIPELINES
+print("Available datasets:", DATASETS.module_dict.keys())
+print("Available pipelines:", PIPELINES.module_dict.keys())
+
+os.environ
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a BEV 3D perception model')
@@ -29,7 +38,7 @@ def parse_args():
     parser.add_argument('--resume-from', help='the checkpoint file to resume from')
     parser.add_argument('--no-validate', action='store_true', help='whether not to evaluate the checkpoint during training')
     parser.add_argument('--gpus', type=int, default=1, help='number of gpus to use')
-    parser.add_argument('--seed', type=int, default=None, help='random seed')
+    parser.add_argument('--seed', type=int, default=32, help='random seed')
     parser.add_argument('--deterministic', action='store_true', help='whether to set deterministic options for CUDNN backend')
     parser.add_argument('--options', nargs='+', action=DictAction, help='arguments in dict')
     parser.add_argument('--launcher', choices=['none', 'pytorch', 'slurm', 'mpi'], default='none', help='job launcher')
@@ -84,12 +93,6 @@ def main():
     # 自动缩放学习率
     if args.autoscale_lr:
         cfg.optimizer['lr'] = cfg.optimizer['lr'] * len(cfg.gpu_ids) / 8
-
-    # 确保数据配置参数存在
-    if not hasattr(cfg, 'samples_per_gpu'):
-        cfg.samples_per_gpu = 4
-    if not hasattr(cfg, 'workers_per_gpu'):
-        cfg.workers_per_gpu = 4
 
     # 创建输出目录
     mmcv.mkdir_or_exist(os.path.abspath(cfg.work_dir))
