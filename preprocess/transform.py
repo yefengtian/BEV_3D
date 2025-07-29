@@ -184,6 +184,46 @@ class LoadAnnotationsBEVDepth():
                                  post_trans, bda_rot)
         return results
     
+class LoadOccGTFromFile(object):
+    """加载占用栅格真值"""
+    def __init__(self, is_train=True):
+        self.is_train = is_train
+    
+    def __call__(self, results):
+        if 'occ2d_gt_path' in results:
+            # 加载 BEV 分割图像
+            gt_path = results['occ2d_gt_path']
+            if os.path.exists(gt_path):
+                # 读取图像并转换为标签
+                img = Image.open(gt_path)
+                img_array = np.array(img)
+                
+                # 确保标签值在 [0, 12] 范围内
+                if img_array.ndim == 3:
+                    img_array = img_array[:, :, 0]  # 取第一个通道
+                
+                # 将图像值映射到类别标签
+                # 这里需要根据你的数据格式进行调整
+                voxel_semantics = img_array.astype(np.int64)
+                
+                # 确保标签值在有效范围内
+                voxel_semantics = np.clip(voxel_semantics, 0, 12)
+                
+                # 检查是否有无效值
+                if np.any(np.isnan(voxel_semantics)) or np.any(np.isinf(voxel_semantics)):
+                    print(f"Warning: Found NaN or Inf in voxel_semantics at {gt_path}")
+                    voxel_semantics = np.nan_to_num(voxel_semantics, nan=0, posinf=0, neginf=0)
+                
+                results['voxel_semantics'] = voxel_semantics
+            else:
+                print(f"Warning: GT file not found: {gt_path}")
+                # 创建一个默认的标签
+                results['voxel_semantics'] = np.zeros((200, 200), dtype=np.int64)
+        else:
+            print("Warning: occ2d_gt_path not found in results")
+            results['voxel_semantics'] = np.zeros((200, 200), dtype=np.int64)
+        
+        return results
 
 class Collect3D(object):
     def __init__(
@@ -203,13 +243,11 @@ class Collect3D(object):
         # repeated_img_metas = [img_metas[key] for _ in range(6)]
         data['img_metas'] = [DC([[img_metas]], cpu_only=True)]
         # results['gt_depth'] = None
-        # 确保这些字段存在，但不覆盖已有的值
-        if 'parkinglot_cat' not in results:
-            results['parkinglot_cat'] = None
-        if 'parkinglot_sts' not in results:
-            results['parkinglot_sts'] = None
-        if 'parkinglot_geom' not in results:
-            results['parkinglot_geom'] = None
+        # 不要将 voxel_semantics 设置为 None
+        # results['voxel_semantics'] = None
+        results['parkinglot_cat'] = None
+        results['parkinglot_sts'] = None
+        results['parkinglot_geom'] = None
         for key in self.keys:
             data[key] = results[key]
         data['img_inputs'] = [list(data['img_inputs'])]
@@ -232,7 +270,10 @@ class TransformationFactory:
             elif config['type'] == 'LoadAnnotationsBEVDepth':
                 transform = LoadAnnotationsBEVDepth(config['bda_aug_conf'])
                 results = transform(results)
-
+            elif config['type'] == 'LoadOccGTFromFile':
+                is_train = config.get('is_train', True)
+                transform = LoadOccGTFromFile(is_train=is_train)
+                results = transform(results)
             elif config['type'] == 'MultiScaleFlipAug3D':
                 keys=['img_inputs', 'voxel_semantics', 'parkinglot_cat','parkinglot_sts', 'parkinglot_geom']
                 transform = Collect3D(keys=keys)
