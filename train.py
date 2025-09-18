@@ -7,7 +7,7 @@ BEV 3D感知模型训练脚本
 import os
 import sys
 
-# sys.path.append(os.path.join(os.path.dirname(__file__), 'model_interface'))
+sys.path.append(os.path.join(os.path.dirname(__file__), 'model_interface'))
 
 import argparse
 import torch
@@ -22,12 +22,54 @@ except Exception:
     # 旧栈（MMCV 1.x）
     from mmcv import Config
     from mmcv.utils import DictAction, ConfigDict
-from mmdet3d.utils import setup_multi_processes, compat_cfg
+
+
+# from mmdet3d.utils import setup_multi_processes, compat_cfg
+
+# 尝试导入 vendored 的工具（大概率会因版本断言失败），失败则用本地兜底
+try:
+    # 注意：这行会触发 vendored mmdet3d 的 __init__，在 mmcv==2.x 下会 AssertionError
+    from mmdet3d.utils import setup_multi_processes as _setup_mp, compat_cfg as _compat_cfg  # noqa
+    setup_multi_processes = _setup_mp
+    compat_cfg = _compat_cfg
+except Exception as e:
+    warnings.warn(f"mmdet3d.utils 无法导入（老版本断言/依赖不兼容），使用本地兜底实现: {e}")
+
+    def compat_cfg(cfg):
+        """最小化兼容：如无特别需要，直接原样返回即可。
+        若你的 cfg 里有 'opencv_num_threads'/'cudnn_benchmark' 等键，本地也会用到。
+        """
+        return cfg
+
+    def setup_multi_processes(cfg):
+        """最小版的多进程/线程设置，与 mmdet3d/utils 中的常见做法等价够用。"""
+        # 限制 OpenCV/omp/mkl 线程数，避免 CPU 抢占
+        try:
+            import cv2  # noqa
+            # 默认 0 关闭 OpenCV 线程；如 cfg 明确设置则以 cfg 为准
+            num = int(cfg.get('opencv_num_threads', 0))
+            try:
+                cv2.setNumThreads(num)
+            except Exception:
+                pass
+        except Exception:
+            pass
+
+        os.environ.setdefault('OMP_NUM_THREADS', str(cfg.get('omp_num_threads', 1)))
+        os.environ.setdefault('MKL_NUM_THREADS', str(cfg.get('mkl_num_threads', 1)))
+
+        # cuDNN benchmark 开关
+        try:
+            import torch
+            torch.backends.cudnn.benchmark = bool(cfg.get('cudnn_benchmark', False))
+        except Exception:
+            pass
 from mmdet3d.apis import train_model
 from mmdet3d.datasets import build_dataset
 from mmdet3d.datasets import CarlaDataset
 from mmdet3d.datasets import build_dataloader
 from mmdet3d.models import build_model
+
 from mmcv.runner import load_checkpoint,init_dist
 from mmcv.parallel import MMDataParallel, MMDistributedDataParallel
 from mmdet3d.datasets import DATASETS
