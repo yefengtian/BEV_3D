@@ -34,6 +34,12 @@ grid_config = {
 voxel_size = [0.025, 0.025, 0.2]
 numC_Trans = 128
 
+#------------Distributed config------------------------
+dist_params = dict(backend='nccl')
+opencv_num_threads = 0
+mp_start_method = 'fork'
+find_unused_parameters = False
+
 model = dict(
     type='BEVDepthParking',  # based on BEVDepthOCC
     img_backbone=dict(

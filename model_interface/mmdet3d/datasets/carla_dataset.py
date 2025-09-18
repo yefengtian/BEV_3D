@@ -1,11 +1,19 @@
 import tempfile
 from os import path as osp
+
 import mmcv
 import numpy as np
 import pyquaternion
-from mmdet3d.datasets import Custom3DDataset
+from nuscenes.utils.data_classes import Box as NuScenesBox
 
-class CarlaDataset():
+from ..core import show_result
+from ..core.bbox import Box3DMode, Coord3DMode, LiDARInstance3DBoxes
+from .builder import DATASETS
+from .custom_3d import Custom3DDataset
+from .pipelines import Compose
+
+@DATASETS.register_module()
+class CarlaDataset(Custom3DDataset):
     OD_CLASSES_RAW = ('vehicle', 'pedestrian', 'building', 'fence', 'pole', 'road',
                         'sidewalk', 'traffic_sign', 'traffic_light', 'tree', 'wall', 'sky',
                         'ground', 'bridge', 'rail_track', 'guard_rail', 'water', 'terrain',
@@ -47,38 +55,40 @@ class CarlaDataset():
                  test_mode=False,
                  eval_version='detection_cvpr_2019',
                  use_valid_flag=False,
-                 img_info_prototype='bevdet',
+                 img_info_prototype='mmcv',
                  multi_adj_frame_id_cfg=None,
                  ego_cam='CAM_FRONT_RGB',
                  stereo=False):
         self.load_interval = load_interval
         self.use_valid_flag = use_valid_flag
+        super().__init__(
+            data_root=data_root,
+            ann_file=ann_file,
+            pipeline=pipeline,
+            classes=classes,
+            modality=modality,
+            box_type_3d=box_type_3d,
+            filter_empty_gt=filter_empty_gt,
+            test_mode=test_mode)
 
         self.with_velocity = with_velocity
         self.eval_version = eval_version
-        self.modality = dict(
-            use_camera=True,
-            use_lidar=True,
-            use_radar=False,
-            use_map=False,
-            use_external=False,
-        )
-        self.ann_file = ann_file
-        self.pipeline = pipeline
-        self.data_root = data_root
-        self.classes = classes
-        self.load_interval = load_interval
-        self.with_velocity = with_velocity
-        self.box_type_3d = box_type_3d
-        self.filter_empty_gt = filter_empty_gt
-        self.test_mode = test_mode
-        self.eval_version = eval_version
-        self.use_valid_flag = use_valid_flag
+        from nuscenes.eval.detection.config import config_factory
+        self.eval_detection_configs = config_factory(self.eval_version)
+        if self.modality is None:
+            self.modality = dict(
+                use_camera=False,
+                use_lidar=True,
+                use_radar=False,
+                use_map=False,
+                use_external=False,
+            )
+
         self.img_info_prototype = img_info_prototype
         self.multi_adj_frame_id_cfg = multi_adj_frame_id_cfg
         self.ego_cam = ego_cam
         self.stereo = stereo
-
+        print("###############!!!!!!!!!!!!!!!!!!!!!!")
 
     def get_cat_ids(self, idx):
         """Get category distribution of single scene.
@@ -115,8 +125,8 @@ class CarlaDataset():
         """
         data = mmcv.load(ann_file, file_format='pkl')
         data_infos = list(sorted(data, key=lambda e: e['timestamp']))
-        self.data_infos = data_infos[::self.load_interval]
-        return len(self.data_infos)
+        data_infos = data_infos[::self.load_interval]
+        return data_infos
 
     def get_data_info(self, index):
         """Get data info according to the given index.
@@ -246,10 +256,18 @@ class CarlaDataset():
             gt_velocity[nan_mask] = [0.0, 0.0]
             gt_bboxes_3d = np.concatenate([gt_bboxes_3d, gt_velocity], axis=-1)
 
+        # the nuscenes box center is [0.5, 0.5, 0.5], we change it to be
+        # the same as KITTI (0.5, 0.5, 0)
+        gt_bboxes_3d = LiDARInstance3DBoxes(
+            gt_bboxes_3d,
+            box_dim=gt_bboxes_3d.shape[-1],
+            origin=(0.5, 0.5, 0.5)).convert_to(self.box_mode_3d)
+
         anns_results = dict(
             gt_bboxes_3d=gt_bboxes_3d,
             gt_labels_3d=gt_labels_3d,
             gt_names=gt_names_3d)
+        print('voxel_semantics max@@@@@@@@@@@@@@@@@@@@@: ',np.max(gt_labels_3d),'min: ',np.min(gt_labels_3d))
         return anns_results
 
     def format_results(self,):
@@ -267,3 +285,6 @@ class CarlaDataset():
         pass
 
         return None
+
+
+

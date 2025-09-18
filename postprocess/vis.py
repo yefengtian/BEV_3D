@@ -81,11 +81,13 @@ def draw_parkinglot(canvas_pred, pl_pred, bev_range=[-10, -10, 10, 10], target_s
                     (int(ctr_canvas_x-75), int(ctr_canvas_y-25)), cv2.FONT_HERSHEY_SIMPLEX, 1, text_color[::-1], 2)
     return canvas_pred
 
-def visualize(occ_pred, pl_pred, save_path):
-    occ_pred = occ_pred[0]  # bs=1
+def visualize(occ_pred, pl_pred, save_path,ori_img):
+    # occ_pred = occ_pred[0]  # bs=1
     pl_pred = pl_pred[0]
     
-    sem_pred = occ_pred.cpu().numpy() if isinstance(occ_pred, torch.Tensor) else occ_pred
-    canvas_pred = occ2img(semantics=sem_pred)
+    # sem_pred = occ_pred.cpu().numpy() if isinstance(occ_pred, torch.Tensor) else occ_pred
+    # canvas_pred = occ2img(semantics=sem_pred)
+    # canvas_pred = np.zeros((1600,1600, 3), dtype=np.uint8)
+    canvas_pred = ori_img
     canvas_pred = draw_parkinglot(canvas_pred, pl_pred)
     cv2.imwrite(save_path, canvas_pred)

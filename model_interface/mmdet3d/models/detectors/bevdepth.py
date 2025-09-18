@@ -5,6 +5,7 @@ from mmcv.runner import force_fp32
 from mmdet3d.models import DETECTORS
 from .bevdet import BEVDet
 from mmdet3d.models import builder
+import cv2
 
 
 @DETECTORS.register_module()
@@ -77,6 +78,13 @@ class BEVDepth(BEVDet):
 
         return [imgs, sensor2keyegos, ego2globals, intrins,
                 post_rots, post_trans, bda]
+    
+    def view_input(self,inputs):
+        image_slice = inputs[0,0,:,:,:]
+        image_slice = image_slice.permute(1,2,0)
+        print(image_slice.shape)
+        output = image_slice.cpu().numpy()
+        cv2.imwrite("look_view.png",output)
 
     def extract_img_feat(self, img_inputs, img_metas, **kwargs):
         """ Extract features of images.
@@ -92,7 +100,9 @@ class BEVDepth(BEVDet):
             x: [(B, C', H', W'), ]
             depth: (B*N, D, fH, fW)
         """
+        # self.view_input(img_inputs[0])
         imgs, sensor2keyegos, ego2globals, intrins, post_rots, post_trans, bda = self.prepare_inputs(img_inputs)
+        # self.view_input(imgs)
         x, _ = self.image_encoder(imgs)    # x: (B, N, C, fH, fW)
         mlp_input = self.img_view_transformer.get_mlp_input(
             sensor2keyegos, ego2globals, intrins, post_rots, post_trans, bda)  # (B, N_views, 27)
