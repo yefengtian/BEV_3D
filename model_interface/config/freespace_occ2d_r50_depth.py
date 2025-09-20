@@ -49,99 +49,100 @@ mp_start_method = 'fork'
 find_unused_parameters = False
 
 model = dict(
-    type='BEVDepthParking',  # based on BEVDepthOCC
-    img_backbone=dict(
-        type='ResNet',
-        depth=50,
-        num_stages=4,
-        out_indices=(2, 3),
-        frozen_stages=-1,
-        norm_cfg=dict(type='BN', requires_grad=True),
-        norm_eval=False,
-        with_cp=True,
-        style='pytorch',
-        pretrained='torchvision://resnet50',
+    type='BEVDepthParking',  # 使用组合包装器
+    inner_model=dict(
+        type='BEVDepth',  # 使用官方的 BEVDepth 作为内部模型
+        img_backbone=dict(
+            type='ResNet',
+            depth=50,
+            num_stages=4,
+            out_indices=(2, 3),
+            frozen_stages=-1,
+            norm_cfg=dict(type='BN', requires_grad=True),
+            norm_eval=False,
+            with_cp=True,
+            style='pytorch',
+            pretrained='torchvision://resnet50',
+        ),
+        img_neck=dict(
+            type='FPN',
+            in_channels=[1024, 2048],
+            out_channels=256,
+            num_outs=1,
+            start_level=0,
+            add_extra_convs='on_output'),
+        img_view_transformer=dict(
+            type='LSSViewTransformer',
+            grid_config=grid_config,
+            input_size=data_config['input_size'],
+            in_channels=256,
+            out_channels=numC_Trans,
+            downsample=16),
+        img_bev_encoder_backbone=dict(
+            type='ResNet',
+            depth=18,
+            num_stages=3,
+            out_indices=(0, 1, 2),
+            frozen_stages=-1,
+            norm_cfg=dict(type='BN', requires_grad=True),
+            norm_eval=False,
+            with_cp=True,
+            style='pytorch'),
+        img_bev_encoder_neck=dict(
+            type='FPN',
+            in_channels=[numC_Trans, numC_Trans * 2, numC_Trans * 4],
+            out_channels=256,
+            num_outs=1),
+        pts_bbox_head=dict(
+            type='CenterHead',
+            in_channels=256,
+            tasks=[
+                dict(num_class=1, class_names=['car']),
+            ],
+            common_heads=dict(
+                reg=(2, 2), height=(1, 2), dim=(3, 2), rot=(2, 2), vel=(2, 2)),
+            share_conv_channel=64,
+            bbox_coder=dict(
+                type='CenterPointBBoxCoder',
+                pc_range=point_cloud_range[:2],
+                post_center_range=[-61.2, -61.2, -10.0, 61.2, 61.2, 10.0],
+                max_num=500,
+                score_threshold=0.1,
+                out_size_factor=8,
+                voxel_size=voxel_size[:2],
+                code_size=9),
+            separate_head=dict(
+                type='SeparateHead', init_bias=-2.19, final_kernel=3),
+            loss_cls=dict(type='GaussianFocalLoss', reduction='mean'),
+            loss_bbox=dict(type='L1Loss', reduction='mean', loss_weight=0.25),
+            norm_bbox=True),
+        # model training and testing settings
+        train_cfg=dict(
+            pts=dict(
+                point_cloud_range=point_cloud_range,
+                grid_size=[800, 800, 1],
+                voxel_size=voxel_size,
+                out_size_factor=8,
+                dense_reg=1,
+                gaussian_overlap=0.1,
+                max_objs=500,
+                min_radius=2,
+                code_weights=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.2, 0.2])),
+        test_cfg=dict(
+            pts=dict(
+                pc_range=point_cloud_range[:2],
+                min_radius=[4, 12, 10, 1, 0.85, 0.175],
+                post_max_size=83,
+                max_per_img=500,
+                max_pool_nms=False,
+                use_rotate_nms=True,
+                nms_thr=0.2,
+                score_thr=0.0,
+                min_bbox_size=0,
+                use_scale_nms=True,
+                max_num=500))
     ),
-    img_neck=dict(
-        type='CustomFPN',
-        in_channels=[1024, 2048],
-        out_channels=256,
-        num_outs=1,
-        start_level=0,
-        out_ids=[0]),
-    img_view_transformer=dict(
-        type='LSSViewTransformerBEVDepth',
-        grid_config=grid_config,
-        input_size=data_config['input_size'],
-        in_channels=256,
-        out_channels=numC_Trans,
-        accelerate=False,            # same intrinsic & extrinsic for all images
-        loss_depth_weight=1,
-        depthnet_cfg=dict(use_dcn=False, aspp_mid_channels=96),
-        downsample=16),
-    img_bev_encoder_backbone=dict(
-        type='CustomResNet',
-        numC_input=numC_Trans,
-        num_channels=[numC_Trans * 2, numC_Trans * 4, numC_Trans * 8]),
-    img_bev_encoder_neck=dict(
-        type='FPN_LSS',
-        in_channels=numC_Trans * 8 + numC_Trans * 2,
-        out_channels=256),
-    occ_head=dict(
-        type='BEVOCCHead2D_V2',
-        in_dim=256,
-        out_dim=256,
-        Dz=1,
-        use_mask=False,
-        num_classes=13,
-        use_predicter=True,
-        class_balance=True,
-        loss_occ=dict(
-            type='CustomFocalLoss',
-            use_sigmoid=True,
-            loss_weight=1.0)),
-    kps_head=dict(
-        type='Centerness_Head2D',
-        task_specific_weight=[1, 1, 1, 1, 1],
-        in_channels=256,
-        tasks=[
-            dict(num_class=3, class_names=['perpendicular', 'parallel', 'other']),
-        ],
-        common_heads=dict(
-            ctr_offset=(2, 2),
-            availability=(3, 2),        # vacant, vehicle-occupied, other-occupied
-            kp0=(2, 2), kp1=(2, 2), kp2=(2, 2), kp3=(2, 2)),
-        share_conv_channel=64,
-        bbox_coder=dict(
-            type='CenterPointParkingspotBBoxCoder',
-            pc_range=point_cloud_range[:2],
-            post_center_range=[-15, -15, -5, 15, 15, 5.0],
-            max_num=50,
-            score_threshold=0.3,
-            out_size_factor=4,
-            voxel_size=voxel_size[:2],
-            code_size=9,
-            nms_kernel_size=15),
-        separate_head=dict(
-            type='SeparateHead', init_bias=-2.19, final_kernel=3),
-        loss_cls=dict(type='GaussianFocalLoss', reduction='mean'),
-        loss_slot=dict(type='L1Loss', reduction='mean', loss_weight=0.25)),
-    # model training and testing settings
-    train_cfg=dict(
-        pts=dict(
-            point_cloud_range=point_cloud_range,
-            grid_size=[800, 800, 1],        # ATTENTION: z is collapsed to 1
-            voxel_size=voxel_size[:2],
-            out_size_factor=4,
-            dense_reg=1,
-            gaussian_overlap=0.1,
-            max_objs=50,
-            min_radius=2,
-            code_weights=[1.5, 1.5, 1.5, 1.5, 1.0, 1.0, 1.0, 1.0, 1.5, 1.5])),
-    test_cfg=dict(
-        pts=dict(
-        )
-    ),
+    data_preprocessor=dict(type='Det3DDataPreprocessor'),
 )
 
 # Data
