@@ -7,19 +7,25 @@ def _noop_decorator(*args, **kwargs):
         return fn
     return wrapper
 
+# --- Compat shim: mmcv1 decorators -> no-op on mmcv2 ---
+def _noop_decorator(*args, **kwargs):
+    def wrapper(fn):
+        return fn
+    return wrapper
+
 try:
-    # MMCV 1.x 老接口（如果你环境里真的装了1.x，会走这条；2.x会抛异常）
+    # 如果真是 mmcv1 环境，会走这里；mmcv2 会抛异常然后走 no-op
     from mmcv.runner import auto_fp16 as _auto_fp16, force_fp32 as _force_fp32  # type: ignore
     auto_fp16 = _auto_fp16
     force_fp32 = _force_fp32
 except Exception:
-    # 新栈：直接提供空操作装饰器，功能上等价于"不开启自动混精"
     auto_fp16 = _noop_decorator
     force_fp32 = _noop_decorator
 # --- end shim ---
 
+
 # 使用官方 mmdet3d 的 registry
-from mmdet3d.registry import MODELS
+from mmdet3d.registry import MODELS, DATASETS,TRANSFORMS
 from mmdet3d.models.builder import build_head
 
 import numpy as np
