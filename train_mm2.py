@@ -260,6 +260,12 @@ def main():
     cfg.setdefault('launcher', args.launcher)
     cfg.setdefault('log_level', 'INFO')
 
+        # ---- 强制关闭验证时，删掉 val_* 以通过 MMEngine 校验 ----
+    if args.no_validate:
+        for k in ['val_dataloader', 'val_cfg', 'val_evaluator']:
+            if k in cfg:
+                cfg.pop(k)
+
     # 构建 Runner
     runner = Runner.from_cfg(cfg)
 
