@@ -9,7 +9,19 @@ from nuscenes.utils.data_classes import Box as NuScenesBox
 
 # 使用官方 mmdet3d 的 registry
 from mmdet3d.registry import DATASETS
-from mmdet3d.datasets import Base3DDataset
+
+# --- 兼容导入：不同版本 mmdet3d 的 Det3DDataset 路径可能不同 ---
+try:
+    # 常规入口（>=1.1 常见）
+    from mmdet3d.datasets import Det3DDataset
+except Exception:
+    # 兜底到文件路径（某些版本）
+    from mmdet3d.datasets.det3d_dataset import Det3DDataset
+# ------------------------------------------------------------
+
+import os.path as osp
+import pickle
+from typing import List, Dict, Any
 
 
 @DATASETS.register_module()
@@ -61,9 +73,21 @@ class CarlaDataset(Base3DDataset):
         print("CarlaDataset 初始化完成")
 
     def load_data_list(self) -> List[Dict[str, Any]]:
-        """加载数据列表"""
-        # 使用父类的方法加载数据
-        return super().load_data_list()
+        ann = self.ann_file if osp.isabs(self.ann_file) else osp.join(self.data_root, self.ann_file)
+        with open(ann, 'rb') as f:
+            raw = pickle.load(f)
+
+        # 这里根据你的 pkl 结构做适配：
+        if isinstance(raw, list):
+            data_list = raw
+        elif isinstance(raw, dict) and 'data_list' in raw:
+            data_list = raw['data_list']
+        else:
+            raise ValueError(f'Unknown annotation format: {ann}')
+
+        # 如果你的 pipeline 需要特定键名（比如 'img_inputs'、'voxel_semantics' 等），
+        # 可以在这里做一次规范化/补充。
+        return data_list
     
     def parse_data_info(self, info: Dict[str, Any]) -> Dict[str, Any]:
         """解析数据信息"""
