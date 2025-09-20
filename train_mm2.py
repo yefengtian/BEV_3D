@@ -45,6 +45,23 @@ except Exception:
             "未找到 register_all_modules/init_default_scope，若后续构建失败，请升级 mmdet3d。"
         )
 
+# 导入项目内的自定义模块以注册自定义组件
+try:
+    import sys
+    import os
+    # 将项目根目录添加到 Python 路径
+    project_root = os.path.dirname(os.path.abspath(__file__))
+    if project_root not in sys.path:
+        sys.path.insert(0, project_root)
+    
+    # 导入项目内的 mmdet3d 模块以注册自定义组件
+    from model_interface.mmdet3d.models import backbones, necks, dense_heads, detectors
+    from model_interface.mmdet3d.models.losses import focal_loss
+    print("成功导入项目内自定义组件")
+except Exception as e:
+    print(f"导入项目内自定义组件时出错: {e}")
+    warnings.warn("无法导入项目内自定义组件，某些自定义模型可能无法使用")
+
 # ============== 小工具 ==============
 
 def find_latest_ckpt(work_dir: str):
