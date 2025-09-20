@@ -179,8 +179,8 @@ def convert_old_cfg_to_v2(cfg: Config) -> Config:
         new_cfg.train_cfg.setdefault('max_epochs', max_epochs)
 
     # 4) 验证/测试循环（可选）
-    new_cfg.setdefault('val_cfg', dict(type='ValLoop'))
-    new_cfg.setdefault('test_cfg', dict(type='TestLoop'))
+    # new_cfg.setdefault('val_cfg', dict(type='ValLoop'))
+    # new_cfg.setdefault('test_cfg', dict(type='TestLoop'))
 
     # 5) 参数调度（如果旧 cfg 里有 lr_config，可映射为 param_scheduler；这里给最小兜底）
     if 'param_scheduler' not in new_cfg:

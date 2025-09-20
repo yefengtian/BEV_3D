@@ -25,7 +25,7 @@ from typing import List, Dict, Any
 
 
 @DATASETS.register_module()
-class CarlaDataset(Base3DDataset):
+class CarlaDataset(Det3DDataset):
     """Carla 数据集类 - 简化版本"""
     
     METAINFO = dict(CLASSES=('vehicle', 'pedestrian', 'static', 'dynamic'))
