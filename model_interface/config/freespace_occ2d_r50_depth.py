@@ -1,3 +1,11 @@
+# 导入自定义插件
+custom_imports = dict(
+    imports=[
+        'model_interface.plugins.parking',  # 导入停车位检测插件
+    ],
+    allow_failed_imports=False,
+)
+
 _base_ = ['./_base_/nus-3d.py',
           './_base_/default_runtime.py']
 
