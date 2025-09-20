@@ -4,6 +4,30 @@ BEV 3D感知模型训练脚本
 基于MMDet3D框架
 """
 
+# --- hotfix: fill missing flags in mmcv.utils BEFORE importing mmdet3d/mmcv.ops ---
+import sys, types
+try:
+    import mmcv.utils as _mu  # 可能成功，也可能触发 unknown location
+except Exception:
+    _mu = types.ModuleType('mmcv.utils')
+    sys.modules['mmcv.utils'] = _mu
+
+# IS_MLU_AVAILABLE
+try:
+    from mmengine.device import is_mlu_available as _is_mlu_avail
+    _mu.IS_MLU_AVAILABLE = bool(_is_mlu_avail())
+except Exception:
+    _mu.IS_MLU_AVAILABLE = False
+
+# IS_MPS_AVAILABLE（有些分支也会用到）
+try:
+    import torch
+    _mu.IS_MPS_AVAILABLE = bool(getattr(torch.backends, 'mps', None) and torch.backends.mps.is_available())
+except Exception:
+    _mu.IS_MPS_AVAILABLE = False
+# --- end hotfix ---
+
+
 import os
 import sys
 
