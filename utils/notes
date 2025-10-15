@@ -1,1 +1,1 @@
-bash utils/dist_train.sh  /workspace/drWorkspace/BEVParkingOL/model_interface/config/freespace_occ2d_r50_depth.py  3
+bash utils/dist_train.sh  ./model_interface/config/freespace_occ2d_r50_depth.py  2
