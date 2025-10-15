@@ -31,9 +31,7 @@ from mmdet3d.models import build_model
 from mmcv.runner import load_checkpoint,init_dist
 from mmcv.parallel import MMDataParallel, MMDistributedDataParallel
 from mmdet3d.datasets import DATASETS
-print(DATASETS.module_dict.keys())
-
-os.environ
+# print(DATASETS.module_dict.keys())
 
 def find_latest_ckpt(work_dir: str):
     """在 work_dir 下寻找最新的 *.pth（按修改时间）"""
@@ -76,8 +74,8 @@ class DictAction(argparse.Action):
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a BEV 3D perception model')
-    parser.add_argument("--config", type=str, default="/workspace/drWorkspace/BEVParkingOL/model_interface/config/freespace_occ2d_r50_depth.py")
-    parser.add_argument('--work-dir', help='the dir to save logs and models',default = '/workspace/drWorkspace/BEVParkingOL/freespace_0915')
+    parser.add_argument("--config", type=str, default="model_interface/config/freespace_occ2d_r50_depth.py")
+    parser.add_argument('--work-dir', help='the dir to save logs and models',default = 'freespace_1015')
     parser.add_argument('--resume-from', help='the checkpoint file to resume from')
     parser.add_argument('--load-from', help='load checkpoint weights for finetuning (仅加载权重，不恢复优化器与进度)')
     parser.add_argument('--ignore-missing-keys', action='store_true',help='load_from 时 strict=False，忽略缺失/不匹配的权重键')
@@ -89,7 +87,7 @@ def parse_args():
     parser.add_argument('--deterministic', action='store_true', help='whether to set deterministic options for CUDNN backend')
     parser.add_argument('--options', nargs='+', action=DictAction, help='arguments in dict')
     parser.add_argument('--launcher', choices=['none', 'pytorch', 'slurm', 'mpi'], default='none', help='job launcher')
-    parser.add_argument('--local_rank', type=int, default=0)
+    parser.add_argument('--local_rank', type=int, default=None)
     parser.add_argument('--autoscale-lr', action='store_true', help='automatically scale lr with the number of gpus')
     args = parser.parse_args()
     if 'LOCAL_RANK' not in os.environ:
@@ -116,6 +114,15 @@ def main():
         cfg.seed = args.seed
         if args.deterministic:
             cfg.deterministic = True
+
+    local_rank = args.local_rank
+    if local_rank is None:
+        #torch run路径
+        local_rank_str = os.environ.get("LOCAL_RANK")
+        if local_rank_str is None or local_rank_str.lower() == "none":
+            local_rank = -1
+        else:
+            local_rank = int(local_rank_str)
 
     # 创建输出目录
     mmcv.mkdir_or_exist(os.path.abspath(cfg.work_dir))

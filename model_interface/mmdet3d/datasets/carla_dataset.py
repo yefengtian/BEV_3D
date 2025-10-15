@@ -199,7 +199,7 @@ class CarlaDataset(Custom3DDataset):
             input_dict['curr']['cams'][k]['data_path'] = data_path
         gt_labels = [self.OD_CLASSES_ENC[gt_name] for gt_name in input_dict['curr']['gt_names'] if gt_name in self.OD_CLASSES_ENC]
         input_dict['ann_infos'] = [input_dict['ann_infos'], gt_labels]
-        input_dict['occ2d_gt_path'] = self.data_infos[index]['cams']['CAM_BEV_SEGMENTATION']['data_path']
+        input_dict['occ2d_gt_path'] = self.data_infos[index]['cams']['CAM_BEV_FREESPACE_BINARY']['data_path']
         return input_dict
 
     def get_adj_info(self, info, index):

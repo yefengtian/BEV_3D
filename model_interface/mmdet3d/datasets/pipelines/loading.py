@@ -16,101 +16,105 @@ from ..builder import PIPELINES
 
 @PIPELINES.register_module()
 class LoadOccGTFromFile(object):
-    CityScapesPalette = {
-        (0, 0, 0): 0,             # Unlabeled
-        (128, 64, 128): 1,        # Roads
-        (244, 35, 232): 2,        # SideWalks
-        (70, 70, 70): 3,          # Building
-        (102, 102, 156): 4,       # Wall
-        (190, 153, 153): 5,       # Fence
-        (153, 153, 153): 6,       # Pole
-        (250, 170, 30): 7,        # TrafficLight
-        (220, 220, 0): 8,         # TrafficSign
-        (107, 142, 35): 9,        # Vegetation
-        (152, 251, 152): 10,      # Terrain
-        (70, 130, 180): 11,       # Sky
-        (220, 20, 60): 12,        # Pedestrian
-        (255, 0, 0): 13,          # Rider
-        (0, 0, 142): 14,          # Car
-        (0, 0, 70): 15,           # Truck
-        (0, 60, 100): 16,         # Bus
-        (0, 80, 100): 17,         # Train
-        (0, 0, 230): 18,          # Motorcycle
-        (119, 11, 32): 19,        # Bicycle
-        (110, 190, 160): 20,      # Static
-        (170, 120, 50): 21,       # Dynamic
-        (55, 90, 80): 22,         # Other
-        (45, 60, 150): 23,        # Water
-        (157, 234, 50): 24,       # RoadLine
-        (81, 0, 81): 25,          # Ground
-        (150, 100, 100): 26,      # Bridge
-        (230, 150, 140): 27,      # RailTrack
-        (180, 165, 180): 28       # GuardRail
-    }
+    # CityScapesPalette = {
+    #     (0, 0, 0): 0,             # Unlabeled
+    #     (128, 64, 128): 1,        # Roads
+    #     (244, 35, 232): 2,        # SideWalks
+    #     (70, 70, 70): 3,          # Building
+    #     (102, 102, 156): 4,       # Wall
+    #     (190, 153, 153): 5,       # Fence
+    #     (153, 153, 153): 6,       # Pole
+    #     (250, 170, 30): 7,        # TrafficLight
+    #     (220, 220, 0): 8,         # TrafficSign
+    #     (107, 142, 35): 9,        # Vegetation
+    #     (152, 251, 152): 10,      # Terrain
+    #     (70, 130, 180): 11,       # Sky
+    #     (220, 20, 60): 12,        # Pedestrian
+    #     (255, 0, 0): 13,          # Rider
+    #     (0, 0, 142): 14,          # Car
+    #     (0, 0, 70): 15,           # Truck
+    #     (0, 60, 100): 16,         # Bus
+    #     (0, 80, 100): 17,         # Train
+    #     (0, 0, 230): 18,          # Motorcycle
+    #     (119, 11, 32): 19,        # Bicycle
+    #     (110, 190, 160): 20,      # Static
+    #     (170, 120, 50): 21,       # Dynamic
+    #     (55, 90, 80): 22,         # Other
+    #     (45, 60, 150): 23,        # Water
+    #     (157, 234, 50): 24,       # RoadLine
+    #     (81, 0, 81): 25,          # Ground
+    #     (150, 100, 100): 26,      # Bridge
+    #     (230, 150, 140): 27,      # RailTrack
+    #     (180, 165, 180): 28       # GuardRail
+    # }
 
-    FreespaceClass = (
-        'unlabeled',    # 0
-        'freespace',    # 1
-        'sidewalk',     # 2
-        'building',     # 3
-        'fence',        # 4
-        'pole',         # 5
-        'terrain',      # 6
-        'pedestrian',   # 7
-        'rider',        # 8
-        'vehicle',      # 9
-        'train',        # 10
-        'others',       # 11
-        'roadline'      # 12
-    )
+    # FreespaceClass = (
+    #     'unlabeled',    # 0
+    #     'freespace',    # 1
+    #     'sidewalk',     # 2
+    #     'building',     # 3
+    #     'fence',        # 4
+    #     'pole',         # 5
+    #     'terrain',      # 6
+    #     'pedestrian',   # 7
+    #     'rider',        # 8
+    #     'vehicle',      # 9
+    #     'train',        # 10
+    #     'others',       # 11
+    #     'roadline'      # 12
+    # )
 
-    FreespacePalette = {
-        0: (0, 0, 0),                # unlabeled, black
-        1: (169, 169, 169),          # freespace, darkgray
-        2: (0, 255, 255),            # sidewalks, aqua
-        3: (100, 149, 237),          # building, cornflowerblue
-        4: (255, 192, 203),          # fence, pink
-        5: (255, 255, 0),            # pole, yellow
-        6: (189, 183, 107),          # terrain, darkkhaki
-        7: (255, 0, 255),            # pedestrian, fuscia
-        8: (123, 104, 238),          # rider, mediumslateblue
-        9: (0, 255, 0),              # vehicle, lime
-        10: (0, 128, 0),             # train, green
-        11: (160, 82, 45),           # others, sienna
-        12: (255, 250, 250)          # roadline, snow
-    }
+    # FreespacePalette = {
+    #     0: (0, 0, 0),                # unlabeled, black
+    #     1: (169, 169, 169),          # freespace, darkgray
+    #     2: (0, 255, 255),            # sidewalks, aqua
+    #     3: (100, 149, 237),          # building, cornflowerblue
+    #     4: (255, 192, 203),          # fence, pink
+    #     5: (255, 255, 0),            # pole, yellow
+    #     6: (189, 183, 107),          # terrain, darkkhaki
+    #     7: (255, 0, 255),            # pedestrian, fuscia
+    #     8: (123, 104, 238),          # rider, mediumslateblue
+    #     9: (0, 255, 0),              # vehicle, lime
+    #     10: (0, 128, 0),             # train, green
+    #     11: (160, 82, 45),           # others, sienna
+    #     12: (255, 250, 250)          # roadline, snow
+    # }
 
-    FreespaceIDMapping = {
-        0: 0,  # unlabeled -> unlabeled
-        1: 1,  # roads -> freespace
-        2: 1,  # sidewalks -> freespace         The parkinglot and the road are connected via sidewalks only
-        3: 3,  # building -> building
-        4: 3,  # wall -> building
-        5: 4,  # fence -> fence
-        6: 5,  # pole -> pole
-        7: 5,  # trafficlight -> pole
-        8: 5,  # trafficsign -> pole
-        9: 6,  # vegetation -> terrain
-        10: 1, # terrain -> freespace           Road surface of parkinglots are marked as terrain in CarlaTown
-        11: 0, # sky -> unlabeled
-        12: 7, # pedestrian -> pedestrian
-        13: 8, # rider -> rider
-        14: 9, # car -> vehicle
-        15: 9, # truck -> vehicle
-        16: 9, # bus -> vehicle
-        17: 10, # train -> train
-        18: 8, # motorcycle -> rider
-        19: 8, # bicycle -> rider
-        20: 11, # static -> others
-        21: 11, # dynamic -> others
-        22: 11, # other -> others
-        23: 6, # water -> terrain
-        24: 12, # roadline -> roadline          Parking slots borders are marked as roadline in CarlaTown. So preserved.
-        25: 1, # ground -> freespace
-        26: 3, # bridge -> building
-        27: 3, # railtrack -> building
-        28: 4, # guardrail -> fence
-    }
+    # FreespaceIDMapping = {
+    #     0: 0,  # unlabeled -> unlabeled
+    #     1: 1,  # roads -> freespace
+    #     2: 1,  # sidewalks -> freespace         The parkinglot and the road are connected via sidewalks only
+    #     3: 3,  # building -> building
+    #     4: 3,  # wall -> building
+    #     5: 4,  # fence -> fence
+    #     6: 5,  # pole -> pole
+    #     7: 5,  # trafficlight -> pole
+    #     8: 5,  # trafficsign -> pole
+    #     9: 6,  # vegetation -> terrain
+    #     10: 1, # terrain -> freespace           Road surface of parkinglots are marked as terrain in CarlaTown
+    #     11: 0, # sky -> unlabeled
+    #     12: 7, # pedestrian -> pedestrian
+    #     13: 8, # rider -> rider
+    #     14: 9, # car -> vehicle
+    #     15: 9, # truck -> vehicle
+    #     16: 9, # bus -> vehicle
+    #     17: 10, # train -> train
+    #     18: 8, # motorcycle -> rider
+    #     19: 8, # bicycle -> rider
+    #     20: 11, # static -> others
+    #     21: 11, # dynamic -> others
+    #     22: 11, # other -> others
+    #     23: 6, # water -> terrain
+    #     24: 12, # roadline -> roadline          Parking slots borders are marked as roadline in CarlaTown. So preserved.
+    #     25: 1, # ground -> freespace
+    #     26: 3, # bridge -> building
+    #     27: 3, # railtrack -> building
+    #     28: 4, # guardrail -> fence
+    # }
+
+
+
+
 
     def __init__(self, is_train=True):
         self.is_train = is_train
@@ -130,20 +134,19 @@ class LoadOccGTFromFile(object):
             results['mask_camera'] = mask_camera
         elif 'occ2d_gt_path' in results.keys():
             occ_gt_path = results['occ2d_gt_path']
-            semantic_img = np.array(Image.open(occ_gt_path))
+            semantic_img = np.array(Image.open(occ_gt_path),dtype = np.uint8)
             if semantic_img.shape[-1] == 4:
                 semantic_img = semantic_img[:, :, :3]
             # convert semantic image to cityscapes palette then to project segmentation class ids
             semantics = np.zeros(semantic_img.shape[:2], dtype=np.int32)
-            for color, label in self.CityScapesPalette.items():
-                semantics[(semantic_img == color).all(axis=-1)] = self.FreespaceIDMapping[label]
+            semantics[semantic_img!=0] = 1
             semantics = semantics[::-1, ::-1].astype(np.uint8)
 
             # convert semantics to cityscapes palette RGB and save the result for debugging
             if not self.is_train:
                 sem_vis = np.zeros((semantics.shape[0], semantics.shape[1], 3), dtype=np.uint8)
-                for label, color in self.FreespacePalette.items():
-                    sem_vis[semantics == label] = color[::-1]
+                sem_vis[semantics == 0] = (0,0,0)
+                sem_vis[semantics == 1] = (200,200,200)
                 results['voxel_semantics'] = sem_vis
             else:
                 results['voxel_semantics'] = semantics.reshape(semantics.shape[0], semantics.shape[1], 1)
@@ -152,6 +155,7 @@ class LoadOccGTFromFile(object):
 
 @PIPELINES.register_module()
 class LoadMultiViewImageFromFiles(object):
+
     """Load multi channel images from a list of separate channel files.
 
     Expects results['img_filename'] to be a list of filenames.

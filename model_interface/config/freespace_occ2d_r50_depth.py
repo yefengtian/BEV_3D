@@ -3,9 +3,13 @@ _base_ = ['./_base_/nus-3d.py',
 
 point_cloud_range = [-10.0, -10.0, -2.0, 10.0, 10.0, 6.0]
 
+# class_names = [
+#     'car', 'truck', 'construction_vehicle', 'bus', 'trailer', 'barrier',
+#     'motorcycle', 'bicycle', 'pedestrian', 'traffic_cone'
+# ]
+
 class_names = [
-    'car', 'truck', 'construction_vehicle', 'bus', 'trailer', 'barrier',
-    'motorcycle', 'bicycle', 'pedestrian', 'traffic_cone'
+    'non_occ','occ'
 ]
 
 data_config = {
@@ -85,7 +89,7 @@ model = dict(
         out_dim=256,
         Dz=1,
         use_mask=False,
-        num_classes=13,
+        num_classes=2,
         use_predicter=True,
         class_balance=True,
         loss_occ=dict(
@@ -226,7 +230,7 @@ share_data_config = dict(
 
 test_data_config = dict(
     pipeline=test_pipeline,
-    ann_file=data_root + 'test_30.pkl')
+    ann_file=data_root + '0801_all_51725.pkl')
 
 # work_dir = '/home/zbz/ws/BEVParking/work_dirs/freespace_occ2d_r50_depth_1127'
 
@@ -235,7 +239,7 @@ data = dict(
     workers_per_gpu=6,
     train=dict(
         data_root=data_root,
-        ann_file=data_root + 'train_70.pkl',
+        ann_file=data_root + '0801_all_51725.pkl',
         pipeline=train_pipeline,
         classes=class_names,
         test_mode=False,
