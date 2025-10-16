@@ -230,16 +230,16 @@ share_data_config = dict(
 
 test_data_config = dict(
     pipeline=test_pipeline,
-    ann_file=data_root + '0801_all_51725.pkl')
+    ann_file=data_root + '0801_5_samples.pkl')
 
 # work_dir = '/home/zbz/ws/BEVParking/work_dirs/freespace_occ2d_r50_depth_1127'
 
 data = dict(
-    samples_per_gpu=6,
-    workers_per_gpu=6,
+    samples_per_gpu=2,
+    workers_per_gpu=4,
     train=dict(
         data_root=data_root,
-        ann_file=data_root + '0801_all_51725.pkl',
+        ann_file=data_root + '0801_5_samples.pkl',
         pipeline=train_pipeline,
         classes=class_names,
         test_mode=False,
@@ -261,7 +261,7 @@ lr_config = dict(
     warmup_by_epoch=True,
     warmup_ratio=0.001,
     min_lr_ratio=0.01)
-runner = dict(type='EpochBasedRunner', max_epochs=300)
+runner = dict(type='EpochBasedRunner', max_epochs=5)
 
 custom_hooks = [
     # dict(
@@ -272,5 +272,5 @@ custom_hooks = [
 ]
 
 # load_from = "ckpts/bevdet-r50-cbgs.pth"
-evaluation = dict(interval=1, start=301, pipeline=test_pipeline)
-checkpoint_config = dict(interval=1, max_keep_ckpts=5)
+evaluation = dict(interval=1, pipeline=test_pipeline,save_best = 'auto')
+checkpoint_config = dict(interval=1, max_keep_ckpts=3,save_last = True)
