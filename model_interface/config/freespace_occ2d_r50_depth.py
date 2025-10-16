@@ -234,25 +234,34 @@ share_data_config = dict(
     img_info_prototype='bevdet',
 )
 
-test_data_config = dict(
-    pipeline=test_pipeline,
-    ann_file=data_root + '0801_5_samples.pkl')
+# test_data_config = dict(
+#     pipeline=test_pipeline,
+#     ann_file=data_root + '0725_10000.pkl')
 
 # work_dir = '/home/zbz/ws/BEVParking/work_dirs/freespace_occ2d_r50_depth_1127'
 
 data = dict(
-    samples_per_gpu=2,
-    workers_per_gpu=4,
+    samples_per_gpu=24,
+    workers_per_gpu=8,
     train=dict(
         data_root=data_root,
-        ann_file=data_root + '0801_5_samples.pkl',
+        ann_file=data_root + '0801_all_51725_train.pkl',
         pipeline=train_pipeline,
         classes=class_names,
         test_mode=False,
         use_valid_flag=True,
         box_type_3d='LiDAR'),
-    val=test_data_config,
-    test=test_data_config)
+
+    val=dict(
+        data_root=data_root,
+        ann_file=data_root + '0801_all_51725_val.pkl',
+        pipeline=test_pipeline),
+    
+    test=dict(
+        data_root=data_root,
+        ann_file=data_root + '0801_all_51725_test.pkl',
+        pipeline=test_pipeline)
+        )
 
 for key in ['val', 'train', 'test']:
     data[key].update(share_data_config)
@@ -267,28 +276,27 @@ lr_config = dict(
     warmup_by_epoch=True,
     warmup_ratio=0.001,
     min_lr_ratio=0.01)
-runner = dict(type='EpochBasedRunner', max_epochs=5)
+runner = dict(type='EpochBasedRunner', max_epochs=150)
 
 # 构造一个"训练式"的 val 数据集：使用 train pipeline + test_mode=False
 # 如果你本来的 val 用的是 test pipeline，需要切到 train pipeline（因为要计算 loss）
 from copy import deepcopy
-val_for_loss = deepcopy(data['train'])  # 直接沿用训练的 pipeline
+val_for_loss = deepcopy(data['val'])  # 直接沿用训练的 pipeline
 val_for_loss['test_mode'] = False
+val_for_loss['pipeline'] = train_pipeline
 
 # ValLossHook 所需的 dataloader 参数（按需调整）
 val_loss_dataloader = dict(
-    samples_per_gpu=data.get('samples_per_gpu', 1),
-    workers_per_gpu=data.get('workers_per_gpu', 4),
+    samples_per_gpu=16,
+    workers_per_gpu=8,
     dist=True,
-    shuffle=False
+    shuffle=False,
+    persistent_workers=True,
+    prefetch_factor=2,
+    pin_memory=True
 )
 
 custom_hooks = [
-    # dict(
-    #     type='MEGVIIEMAHook',
-    #     init_updates=10560,
-    #     priority='NORMAL',
-    # ),
     dict(
         type='ValLossHook',
         dataset_cfg=val_for_loss,

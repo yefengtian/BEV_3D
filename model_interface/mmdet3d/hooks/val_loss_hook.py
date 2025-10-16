@@ -3,7 +3,7 @@ import math
 import os.path as osp
 import torch
 from mmcv.runner import HOOKS, Hook
-from mmcv.parallel import is_module_wrapper
+from mmcv.parallel import is_module_wrapper,scatter
 
 
 def parse_losses(losses):
@@ -67,8 +67,8 @@ class ValLossHook(Hook):
 
     def before_run(self, runner):
         # 延迟构建，避免 import 顺序问题
-        from mmdet.datasets import build_dataloader
-        from model_interface.mmdet3d.datasets import build_dataset
+        from mmdet3d.datasets import build_dataloader
+        from mmdet3d.datasets import build_dataset
 
         dataset = build_dataset(self.dataset_cfg)
         self._dataloader = build_dataloader(dataset=dataset, **self.dataloader_cfg)
@@ -83,9 +83,14 @@ class ValLossHook(Hook):
             model = model.module
         model.eval()
 
+        device = next(model.parameters()).device
+        device_id = device.index if device.type == 'cuda' else None
+
         total_loss, total_samples = 0.0, 0
         with torch.no_grad():
             for data in self._dataloader:
+                if device.type == 'cuda':
+                    data = scatter(data,[device_id if device_id is not None else torch.cuda.current_divice()])[0]
                 # 与训练一致：return_loss=True，得到各项 loss，再 parse 汇总
                 losses = model(return_loss=True, **data)
                 loss, log_vars = parse_losses(losses)

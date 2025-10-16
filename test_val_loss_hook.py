@@ -4,9 +4,18 @@
 """
 import sys
 import os
+import argparse
 
 # 添加项目路径到sys.path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'model_interface'))
+
+try:
+    # 新栈（MMCV 2.x + MMEngine）
+    from mmengine.config import Config, DictAction, ConfigDict
+except Exception:
+    # 旧栈（MMCV 1.x）
+    from mmcv import Config
+    from mmcv.utils import DictAction, ConfigDict
 
 def test_val_loss_hook():
     """测试ValLossHook是否能正确导入和初始化"""
@@ -45,11 +54,14 @@ def test_carla_dataset():
     try:
         from mmdet3d.datasets.carla_dataset import CarlaDataset
         print("✓ CarlaDataset导入成功")
+
+        data_root = 'data/carla_bev/'
         
         # 测试evaluate方法签名
         dataset = CarlaDataset(
-            ann_file='dummy.pkl',
-            data_root='dummy',
+            ann_file= data_root + '0801_5_samples.pkl',
+            data_root= data_root,
+            classes = ['non_occ','occ'],
             pipeline=[]
         )
         
@@ -77,6 +89,8 @@ def test_config():
         
         with open(config_path, 'r') as f:
             config_content = f.read()
+
+        # cfg = Config.fromfile(config_path)
         
         # 检查关键配置是否存在
         if 'ValLossHook' in config_content:
@@ -103,6 +117,7 @@ def test_config():
         print(f"✗ 配置文件测试失败: {e}")
         return False
 
+
 if __name__ == '__main__':
     print("开始测试ValLossHook实现...")
     print("=" * 50)
@@ -113,10 +128,10 @@ if __name__ == '__main__':
     success &= test_val_loss_hook()
     print()
     
-    success &= test_carla_dataset()
-    print()
-    
     success &= test_config()
+    print()
+
+    success &= test_carla_dataset()
     print()
     
     print("=" * 50)
