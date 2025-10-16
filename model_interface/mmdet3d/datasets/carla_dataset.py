@@ -270,20 +270,20 @@ class CarlaDataset(Custom3DDataset):
         print('voxel_semantics max@@@@@@@@@@@@@@@@@@@@@: ',np.max(gt_labels_3d),'min: ',np.min(gt_labels_3d))
         return anns_results
 
-    def format_results(self,):
-        pass
+    def format_results(self, results, jsonfile_prefix=None, **kwargs):
+        return results
 
-        return None
+    def evaluate(self,
+                 results,
+                 metric=None,
+                 logger=None,
+                 jsonfile_prefix=None,
+                 result_names=None,
+                 **kwargs):
+        # 这里不做指标计算，留空即可（我们用 ValLossHook 做评估与存最优）
+        return {}
 
-    def evaluate(self,):
-        pass
-
-        return None
-
-
-    def show(self,):
-        pass
-
+    def show(self, results, out_dir=None, show=False, **kwargs):
         return None
 
 

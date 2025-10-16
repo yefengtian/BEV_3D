@@ -1,6 +1,12 @@
 _base_ = ['./_base_/nus-3d.py',
           './_base_/default_runtime.py']
 
+# 显式导入自定义 Hook（很重要，否则 Registry 找不到）
+custom_imports = dict(
+    imports=['model_interface.mmdet3d.hooks.val_loss_hook'],
+    allow_failed_imports=False
+)
+
 point_cloud_range = [-10.0, -10.0, -2.0, 10.0, 10.0, 6.0]
 
 # class_names = [
@@ -263,14 +269,37 @@ lr_config = dict(
     min_lr_ratio=0.01)
 runner = dict(type='EpochBasedRunner', max_epochs=5)
 
+# 构造一个"训练式"的 val 数据集：使用 train pipeline + test_mode=False
+# 如果你本来的 val 用的是 test pipeline，需要切到 train pipeline（因为要计算 loss）
+from copy import deepcopy
+val_for_loss = deepcopy(data['train'])  # 直接沿用训练的 pipeline
+val_for_loss['test_mode'] = False
+
+# ValLossHook 所需的 dataloader 参数（按需调整）
+val_loss_dataloader = dict(
+    samples_per_gpu=data.get('samples_per_gpu', 1),
+    workers_per_gpu=data.get('workers_per_gpu', 4),
+    dist=True,
+    shuffle=False
+)
+
 custom_hooks = [
     # dict(
     #     type='MEGVIIEMAHook',
     #     init_updates=10560,
     #     priority='NORMAL',
     # ),
+    dict(
+        type='ValLossHook',
+        dataset_cfg=val_for_loss,
+        dataloader_cfg=val_loss_dataloader,
+        interval=1,              # 每个 epoch 做一次
+        rule='less',             # 越小越好
+        filename_tmpl='best_val_loss_epoch_{:03d}.pth'
+    )
 ]
 
 # load_from = "ckpts/bevdet-r50-cbgs.pth"
-evaluation = dict(interval=1, pipeline=test_pipeline,save_best = 'auto')
-checkpoint_config = dict(interval=1, max_keep_ckpts=3,save_last = True)
+# 关闭默认的 EvalHook（它会去跑 dataset.evaluate() 的 mAP/NDS 等）
+evaluation = dict(interval=0)  # 或者直接不写 validate=True
+checkpoint_config = dict(interval=1, max_keep_ckpts=3, save_last=True)
