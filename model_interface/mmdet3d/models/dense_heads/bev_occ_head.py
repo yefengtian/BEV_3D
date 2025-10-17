@@ -368,11 +368,11 @@ class BEVOCCHead2D_V2(BaseModule):      # Use stronger loss setting
             preds,
             voxel_semantics,
             weight=self.cls_weights.to(preds),
-        ) * 100.0
+        )
         loss['loss_occ'] = loss_occ
         loss['loss_voxel_sem_scal'] = sem_scal_loss(preds, voxel_semantics)
-        loss['loss_voxel_geo_scal'] = geo_scal_loss(preds, voxel_semantics, ignore_index=0, non_empty_idx=1)
-        loss['loss_voxel_lovasz'] = lovasz_softmax(torch.softmax(preds, dim=1), voxel_semantics)
+        loss['loss_voxel_geo_scal'] = geo_scal_loss(preds, voxel_semantics, ignore_index=0, non_empty_idx=1)*0.5
+        loss['loss_voxel_lovasz'] = lovasz_softmax(torch.softmax(preds, dim=1), voxel_semantics)*0.5
 
         return loss
 
