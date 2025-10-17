@@ -241,11 +241,11 @@ share_data_config = dict(
 # work_dir = '/home/zbz/ws/BEVParking/work_dirs/freespace_occ2d_r50_depth_1127'
 
 data = dict(
-    samples_per_gpu=24,
-    workers_per_gpu=8,
+    samples_per_gpu=2,
+    workers_per_gpu=1,
     train=dict(
         data_root=data_root,
-        ann_file=data_root + '0801_all_51725_train.pkl',
+        ann_file=data_root + '0801_all_51725_train_100_samples.pkl',
         pipeline=train_pipeline,
         classes=class_names,
         test_mode=False,
@@ -254,12 +254,12 @@ data = dict(
 
     val=dict(
         data_root=data_root,
-        ann_file=data_root + '0801_all_51725_val.pkl',
+        ann_file=data_root + '0801_all_51725_val_20_samples.pkl',
         pipeline=test_pipeline),
     
     test=dict(
         data_root=data_root,
-        ann_file=data_root + '0801_all_51725_test.pkl',
+        ann_file=data_root + '0801_all_51725_test_20_samples.pkl',
         pipeline=test_pipeline)
         )
 
@@ -267,16 +267,16 @@ for key in ['val', 'train', 'test']:
     data[key].update(share_data_config)
 
 # Optimizer
-optimizer = dict(type='AdamW', lr=3e-4, weight_decay=1e-2)
-optimizer_config = dict(grad_clip=dict(max_norm=5, norm_type=2))
+optimizer = dict(type='AdamW', lr=1e-4, weight_decay=1e-2)
+optimizer_config = dict(grad_clip=dict(max_norm=0.1, norm_type=2))
 lr_config = dict(
     policy='CosineAnnealing',
     warmup='linear',
-    warmup_iters=10,
+    warmup_iters=5,
     warmup_by_epoch=True,
     warmup_ratio=0.001,
     min_lr_ratio=0.01)
-runner = dict(type='EpochBasedRunner', max_epochs=150)
+runner = dict(type='EpochBasedRunner', max_epochs=200)
 
 # 构造一个"训练式"的 val 数据集：使用 train pipeline + test_mode=False
 # 如果你本来的 val 用的是 test pipeline，需要切到 train pipeline（因为要计算 loss）
@@ -287,8 +287,8 @@ val_for_loss['pipeline'] = train_pipeline
 
 # ValLossHook 所需的 dataloader 参数（按需调整）
 val_loss_dataloader = dict(
-    samples_per_gpu=16,
-    workers_per_gpu=8,
+    samples_per_gpu=20,
+    workers_per_gpu=6,
     dist=True,
     shuffle=False,
     persistent_workers=True,
