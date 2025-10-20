@@ -21,9 +21,9 @@ class BEVDepthParking(BEVDepth):
         test_cfg = kwargs['test_cfg']
         pts_train_cfg = train_cfg.pts if train_cfg is not None else None
         pts_test_cfg = test_cfg.pts if test_cfg is not None else None
-        kps_head.update(train_cfg=pts_train_cfg, test_cfg=pts_test_cfg)
+        # kps_head.update(train_cfg=pts_train_cfg, test_cfg=pts_test_cfg)
 
-        self.parkinglot_head = build_head(kps_head)
+        # self.parkinglot_head = build_head(kps_head)
         self.pts_bbox_head = None
         self.upsample = upsample
 
@@ -113,12 +113,12 @@ class BEVDepthParking(BEVDepth):
         loss_occ = self.forward_occ_train(occ_bev_feature, voxel_semantics, mask_camera)
         losses.update(loss_occ)
 
-        pl_cat = kwargs['parkinglot_cat']
-        pl_sts = kwargs['parkinglot_sts']
-        pl_geom = kwargs['parkinglot_geom']
+        # pl_cat = kwargs['parkinglot_cat']
+        # pl_sts = kwargs['parkinglot_sts']
+        # pl_geom = kwargs['parkinglot_geom']
 
-        loss_parkinglot = self.forward_pl_train([occ_bev_feature], pl_cat, pl_sts, pl_geom)
-        losses.update(loss_parkinglot)
+        # loss_parkinglot = self.forward_pl_train([occ_bev_feature], pl_cat, pl_sts, pl_geom)
+        # losses.update(loss_parkinglot)
 
         return losses
 
@@ -170,8 +170,9 @@ class BEVDepthParking(BEVDepth):
                                             mode='bilinear', align_corners=True)
 
         occ_list = self.simple_test_occ(occ_bev_feature, img_metas)    # List[(Dx, Dy, Dz), (Dx, Dy, Dz), ...]
-        parkinglot_list = self.simple_test_pl([occ_bev_feature], img_metas)
-        return occ_list, parkinglot_list
+        # parkinglot_list = self.simple_test_pl([occ_bev_feature], img_metas)
+        # return occ_list, parkinglot_list
+        return occ_list
 
     def simple_test_occ(self, img_feats, img_metas=None):
         """

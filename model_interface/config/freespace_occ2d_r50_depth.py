@@ -102,32 +102,32 @@ model = dict(
             type='CustomFocalLoss',
             use_sigmoid=True,
             loss_weight=1.0)),
-    kps_head=dict(
-        type='Centerness_Head2D',
-        task_specific_weight=[1, 1, 1, 1, 1],
-        in_channels=256,
-        tasks=[
-            dict(num_class=3, class_names=['perpendicular', 'parallel', 'other']),
-        ],
-        common_heads=dict(
-            ctr_offset=(2, 2),
-            availability=(3, 2),        # vacant, vehicle-occupied, other-occupied
-            kp0=(2, 2), kp1=(2, 2), kp2=(2, 2), kp3=(2, 2)),
-        share_conv_channel=64,
-        bbox_coder=dict(
-            type='CenterPointParkingspotBBoxCoder',
-            pc_range=point_cloud_range[:2],
-            post_center_range=[-15, -15, -5, 15, 15, 5.0],
-            max_num=50,
-            score_threshold=0.3,
-            out_size_factor=4,
-            voxel_size=voxel_size[:2],
-            code_size=9,
-            nms_kernel_size=15),
-        separate_head=dict(
-            type='SeparateHead', init_bias=-2.19, final_kernel=3),
-        loss_cls=dict(type='GaussianFocalLoss', reduction='mean'),
-        loss_slot=dict(type='L1Loss', reduction='mean', loss_weight=0.25)),
+    # kps_head=dict(
+    #     type='Centerness_Head2D',
+    #     task_specific_weight=[1, 1, 1, 1, 1],
+    #     in_channels=256,
+    #     tasks=[
+    #         dict(num_class=3, class_names=['perpendicular', 'parallel', 'other']),
+    #     ],
+    #     common_heads=dict(
+    #         ctr_offset=(2, 2),
+    #         availability=(3, 2),        # vacant, vehicle-occupied, other-occupied
+    #         kp0=(2, 2), kp1=(2, 2), kp2=(2, 2), kp3=(2, 2)),
+    #     share_conv_channel=64,
+    #     bbox_coder=dict(
+    #         type='CenterPointParkingspotBBoxCoder',
+    #         pc_range=point_cloud_range[:2],
+    #         post_center_range=[-15, -15, -5, 15, 15, 5.0],
+    #         max_num=50,
+    #         score_threshold=0.3,
+    #         out_size_factor=4,
+    #         voxel_size=voxel_size[:2],
+    #         code_size=9,
+    #         nms_kernel_size=15),
+    #     separate_head=dict(
+    #         type='SeparateHead', init_bias=-2.19, final_kernel=3),
+    #     loss_cls=dict(type='GaussianFocalLoss', reduction='mean'),
+    #     loss_slot=dict(type='L1Loss', reduction='mean', loss_weight=0.25)),
     # model training and testing settings
     train_cfg=dict(
         pts=dict(
@@ -242,7 +242,7 @@ share_data_config = dict(
 
 data = dict(
     samples_per_gpu=2,
-    workers_per_gpu=1,
+    workers_per_gpu=2,
     train=dict(
         data_root=data_root,
         ann_file=data_root + '0801_all_51725_train_100_samples.pkl',
@@ -272,8 +272,8 @@ optimizer_config = dict(grad_clip=dict(max_norm=0.1, norm_type=2))
 lr_config = dict(
     policy='CosineAnnealing',
     warmup='linear',
-    warmup_iters=5,
-    warmup_by_epoch=True,
+    warmup_iters=1500,
+    warmup_by_epoch=False,
     warmup_ratio=0.001,
     min_lr_ratio=0.01)
 runner = dict(type='EpochBasedRunner', max_epochs=200)
@@ -287,8 +287,8 @@ val_for_loss['pipeline'] = train_pipeline
 
 # ValLossHook 所需的 dataloader 参数（按需调整）
 val_loss_dataloader = dict(
-    samples_per_gpu=20,
-    workers_per_gpu=6,
+    samples_per_gpu=2,
+    workers_per_gpu=2,
     dist=True,
     shuffle=False,
     persistent_workers=True,
