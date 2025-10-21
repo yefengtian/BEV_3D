@@ -15,7 +15,7 @@ class BEVDepthParking(BEVDepth):
                  upsample=False,
                  **kwargs):
         super(BEVDepthParking, self).__init__(**kwargs)
-        self.occ_head = build_head(occ_head)
+        # self.occ_head = build_head(occ_head)
 
         train_cfg = kwargs['train_cfg']
         test_cfg = kwargs['test_cfg']
@@ -76,10 +76,10 @@ class BEVDepthParking(BEVDepth):
 
         voxel_semantics = kwargs['voxel_semantics']     # (B, Dx, Dy, Dz)
 
-        if self.occ_head.use_mask:
-            mask_camera = kwargs['mask_camera']     # (B, Dx, Dy, Dz)
-        else:
-            mask_camera = None
+        # if self.occ_head.use_mask:
+        #     mask_camera = kwargs['mask_camera']     # (B, Dx, Dy, Dz)
+        # else:
+        #     mask_camera = None
 
         occ_bev_feature = img_feats[0]
         if self.upsample:
@@ -110,8 +110,8 @@ class BEVDepthParking(BEVDepth):
         # cv2.imwrite('voxel_semantics.png', sem_vis)
         ##############
 
-        loss_occ = self.forward_occ_train(occ_bev_feature, voxel_semantics, mask_camera)
-        losses.update(loss_occ)
+        # loss_occ = self.forward_occ_train(occ_bev_feature, voxel_semantics, mask_camera)
+        # losses.update(loss_occ)
 
         pl_cat = kwargs['parkinglot_cat']
         pl_sts = kwargs['parkinglot_sts']
@@ -169,9 +169,10 @@ class BEVDepthParking(BEVDepth):
             occ_bev_feature = F.interpolate(occ_bev_feature, scale_factor=2,
                                             mode='bilinear', align_corners=True)
 
-        occ_list = self.simple_test_occ(occ_bev_feature, img_metas)    # List[(Dx, Dy, Dz), (Dx, Dy, Dz), ...]
+        # occ_list = self.simple_test_occ(occ_bev_feature, img_metas)    # List[(Dx, Dy, Dz), (Dx, Dy, Dz), ...]
         parkinglot_list = self.simple_test_pl([occ_bev_feature], img_metas)
-        return occ_list, parkinglot_list
+        # return occ_list, parkinglot_list
+        return parkinglot_list
 
     def simple_test_occ(self, img_feats, img_metas=None):
         """

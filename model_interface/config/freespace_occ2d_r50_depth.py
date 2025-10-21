@@ -89,19 +89,19 @@ model = dict(
         type='FPN_LSS',
         in_channels=numC_Trans * 8 + numC_Trans * 2,
         out_channels=256),
-    occ_head=dict(
-        type='BEVOCCHead2D_V2',
-        in_dim=256,
-        out_dim=256,
-        Dz=1,
-        use_mask=False,
-        num_classes=2,
-        use_predicter=True,
-        class_balance=True,
-        loss_occ=dict(
-            type='CustomFocalLoss',
-            use_sigmoid=True,
-            loss_weight=1.0)),
+    # occ_head=dict(
+    #     type='BEVOCCHead2D_V2',
+    #     in_dim=256,
+    #     out_dim=256,
+    #     Dz=1,
+    #     use_mask=False,
+    #     num_classes=2,
+    #     use_predicter=True,
+    #     class_balance=True,
+    #     loss_occ=dict(
+    #         type='CustomFocalLoss',
+    #         use_sigmoid=True,
+    #         loss_weight=1.0)),
     kps_head=dict(
         type='Centerness_Head2D',
         task_specific_weight=[1, 1, 1, 1, 1],
@@ -241,11 +241,11 @@ share_data_config = dict(
 # work_dir = '/home/zbz/ws/BEVParking/work_dirs/freespace_occ2d_r50_depth_1127'
 
 data = dict(
-    samples_per_gpu=2,
-    workers_per_gpu=1,
+    samples_per_gpu=28,
+    workers_per_gpu=8,
     train=dict(
         data_root=data_root,
-        ann_file=data_root + '0801_all_51725_train_100_samples.pkl',
+        ann_file=data_root + '0801_all_51725_train.pkl',
         pipeline=train_pipeline,
         classes=class_names,
         test_mode=False,
@@ -254,12 +254,12 @@ data = dict(
 
     val=dict(
         data_root=data_root,
-        ann_file=data_root + '0801_all_51725_val_20_samples.pkl',
+        ann_file=data_root + '0801_all_51725_val.pkl',
         pipeline=test_pipeline),
     
     test=dict(
         data_root=data_root,
-        ann_file=data_root + '0801_all_51725_test_20_samples.pkl',
+        ann_file=data_root + '0801_all_51725_test.pkl',
         pipeline=test_pipeline)
         )
 
@@ -287,7 +287,7 @@ val_for_loss['pipeline'] = train_pipeline
 
 # ValLossHook 所需的 dataloader 参数（按需调整）
 val_loss_dataloader = dict(
-    samples_per_gpu=20,
+    samples_per_gpu=26,
     workers_per_gpu=6,
     dist=True,
     shuffle=False,
