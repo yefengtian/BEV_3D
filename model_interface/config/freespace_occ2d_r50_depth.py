@@ -102,33 +102,6 @@ model = dict(
             type='CustomFocalLoss',
             use_sigmoid=True,
             loss_weight=1.0)),
-    # kps_head=dict(
-    #     type='Centerness_Head2D',
-    #     task_specific_weight=[1, 1, 1, 1, 1],
-    #     in_channels=256,
-    #     tasks=[
-    #         dict(num_class=3, class_names=['perpendicular', 'parallel', 'other']),
-    #     ],
-    #     common_heads=dict(
-    #         ctr_offset=(2, 2),
-    #         availability=(3, 2),        # vacant, vehicle-occupied, other-occupied
-    #         kp0=(2, 2), kp1=(2, 2), kp2=(2, 2), kp3=(2, 2)),
-    #     share_conv_channel=64,
-    #     bbox_coder=dict(
-    #         type='CenterPointParkingspotBBoxCoder',
-    #         pc_range=point_cloud_range[:2],
-    #         post_center_range=[-15, -15, -5, 15, 15, 5.0],
-    #         max_num=50,
-    #         score_threshold=0.3,
-    #         out_size_factor=4,
-    #         voxel_size=voxel_size[:2],
-    #         code_size=9,
-    #         nms_kernel_size=15),
-    #     separate_head=dict(
-    #         type='SeparateHead', init_bias=-2.19, final_kernel=3),
-    #     loss_cls=dict(type='GaussianFocalLoss', reduction='mean'),
-    #     loss_slot=dict(type='L1Loss', reduction='mean', loss_weight=0.25)),
-    # model training and testing settings
     train_cfg=dict(
         pts=dict(
             point_cloud_range=point_cloud_range,
@@ -234,18 +207,12 @@ share_data_config = dict(
     img_info_prototype='bevdet',
 )
 
-# test_data_config = dict(
-#     pipeline=test_pipeline,
-#     ann_file=data_root + '0725_10000.pkl')
-
-# work_dir = '/home/zbz/ws/BEVParking/work_dirs/freespace_occ2d_r50_depth_1127'
-
 data = dict(
-    samples_per_gpu=2,
-    workers_per_gpu=2,
+    samples_per_gpu=26,
+    workers_per_gpu=8,
     train=dict(
         data_root=data_root,
-        ann_file=data_root + '0801_all_51725_train_100_samples.pkl',
+        ann_file=data_root + '0801_all_51725_train.pkl',
         pipeline=train_pipeline,
         classes=class_names,
         test_mode=False,
@@ -254,12 +221,12 @@ data = dict(
 
     val=dict(
         data_root=data_root,
-        ann_file=data_root + '0801_all_51725_val_20_samples.pkl',
+        ann_file=data_root + '0801_all_51725_val.pkl',
         pipeline=test_pipeline),
     
     test=dict(
         data_root=data_root,
-        ann_file=data_root + '0801_all_51725_test_20_samples.pkl',
+        ann_file=data_root + '0801_all_51725_test.pkl',
         pipeline=test_pipeline)
         )
 
@@ -278,8 +245,7 @@ lr_config = dict(
     min_lr_ratio=0.01)
 runner = dict(type='EpochBasedRunner', max_epochs=200)
 
-# 构造一个"训练式"的 val 数据集：使用 train pipeline + test_mode=False
-# 如果你本来的 val 用的是 test pipeline，需要切到 train pipeline（因为要计算 loss）
+
 from copy import deepcopy
 val_for_loss = deepcopy(data['val'])  # 直接沿用训练的 pipeline
 val_for_loss['test_mode'] = False
@@ -287,8 +253,8 @@ val_for_loss['pipeline'] = train_pipeline
 
 # ValLossHook 所需的 dataloader 参数（按需调整）
 val_loss_dataloader = dict(
-    samples_per_gpu=2,
-    workers_per_gpu=2,
+    samples_per_gpu=26,
+    workers_per_gpu=6,
     dist=True,
     shuffle=False,
     persistent_workers=True,
@@ -307,7 +273,6 @@ custom_hooks = [
     )
 ]
 
-# load_from = "ckpts/bevdet-r50-cbgs.pth"
-# 关闭默认的 EvalHook（它会去跑 dataset.evaluate() 的 mAP/NDS 等）
-evaluation = dict(interval=0)  # 或者直接不写 validate=True
+
+evaluation = dict(interval=0)
 checkpoint_config = dict(interval=1, max_keep_ckpts=3, save_last=True)

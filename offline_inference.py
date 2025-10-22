@@ -2,6 +2,7 @@ import os
 import torch
 import argparse
 import time
+import cv2
 from pathlib import Path
 
 from mmcv import Config
@@ -19,16 +20,16 @@ def main():
         "--config", type=str, default="model_interface/config/freespace_occ2d_r50_depth.py"
     )
     parser.add_argument(
-        "--weights", type=str, default="model_interface/ckpts/epoch_69.pth"
+        "--weights", type=str, default="only_freespace_head_1020_run/best_val_loss_epoch_035.pth"
     )
     parser.add_argument(
-        "--data_root", type=str, required=True, help="Path to image data directory"
+        "--data_root", type=str, default="data/carla_bev", help="Path to image data directory"
     )
     parser.add_argument(
-        "--annotation_file", type=str, default=None, help="Path to annotation file (optional)"
+        "--annotation_file", type=str, default="data/carla_bev/0801_all_51725_test_20_samples.pkl", help="Path to annotation file (optional)"
     )
     parser.add_argument(
-        "--vis", type=str, default="./vis", help="Directory for output visualization"
+        "--vis", type=str, default="./vis_output035_test_com", help="Directory for output visualization"
     )
     parser.add_argument(
         "--start_idx", type=int, default=0, help="Start index for processing"
@@ -69,6 +70,13 @@ def main():
             if not all_data:
                 print(f"Skipping sample {idx}: no data")
                 continue
+
+            new_img_path = all_data['curr']['cams']['CAM_BEV_FREESPACE_BINARY']['data_path']
+            # new_img_path = img_path.replace('data/carla_bev/','data/carla_bev_infer_data_fast/')
+            print(new_img_path)
+            img_name = os.path.basename(new_img_path)
+            img = cv2.imread(new_img_path)
+            img = cv2.resize(img,(1600,1600))
             
             tic = time.time()
             
@@ -77,14 +85,16 @@ def main():
                 toc1 = time.time()
                 print(f"Sample {idx} - Time elapsed of preprocess: {int(1000*(toc1 - tic))}ms")
                 
-                occ_pred, pl_pred = model(return_loss=False, rescale=True, **infer_data)
+                occ_pred = model(return_loss=False, rescale=True, **infer_data)
                 toc2 = time.time()
                 print(f"Sample {idx} - Time elapsed of model: {int(1000*(toc2 - toc1))}ms")
+
+                pl_pred = None
                 
                 if args.vis is not None:
                     timestamp = all_data.get('timestamp', idx)
-                    save_path = os.path.join(args.vis, f"{timestamp}.jpg")
-                    visualize(occ_pred, pl_pred, save_path)
+                    save_path = os.path.join(args.vis, img_name)
+                    visualize(occ_pred, pl_pred, save_path,img)
                 toc3 = time.time()
                 print(f"Sample {idx} - Time elapsed of visualize: {int(1000*(toc3 - toc2))}ms")
 

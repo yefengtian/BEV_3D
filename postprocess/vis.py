@@ -3,19 +3,8 @@ import torch
 import numpy as np
 
 FreespacePalette = {
-    0: (0, 0, 0),                # unlabeled, black
-    1: (169, 169, 169),          # freespace, darkgray
-    2: (0, 255, 255),            # sidewalks, aqua
-    3: (100, 149, 237),          # building, cornflowerblue
-    4: (255, 192, 203),          # fence, pink
-    5: (255, 255, 0),            # pole, yellow
-    6: (189, 183, 107),          # terrain, darkkhaki
-    7: (255, 0, 255),            # pedestrian, fuscia
-    8: (123, 104, 238),          # rider, mediumslateblue
-    9: (0, 255, 0),              # vehicle, lime
-    10: (0, 128, 0),             # train, green
-    11: (160, 82, 45),           # others, sienna
-    12: (255, 250, 250)          # roadline, snow
+    0: (0, 0, 0),                # occ
+    1: (255, 255, 255),          # no occ
 }
 
 ParkingspotType_decode = {
@@ -42,6 +31,26 @@ def occ2img(semantics=None, target_size=(1600, 1600)):
     viz = viz[::-1, ::-1, ...]
     viz = cv2.resize(viz, dsize=target_size, interpolation=cv2.INTER_NEAREST)
     return viz
+
+def overlay_segmentation(base_img, seg_mask, color=[0, 255, 0], alpha=0.5):
+    """
+    将分割结果以透明度方式叠加在底图上
+    
+    Args:
+        base_img: 底图 (BGR格式)
+        seg_mask: 分割掩码 (二值图，0和255)
+        color: 叠加颜色 [B, G, R]
+        alpha: 透明度 (0-1)
+    """
+    # 创建彩色掩码
+    color_mask = np.zeros_like(base_img)
+    color_mask[seg_mask > 0] = color
+    
+    # 叠加图像
+    overlay = base_img.copy()
+    cv2.addWeighted(color_mask, alpha, overlay, 1 - alpha, 0, overlay)
+    
+    return overlay
 
 def draw_parkinglot(canvas_pred, pl_pred, bev_range=[-10, -10, 10, 10], target_size=(1600, 1600)):
     # bev_range: [xmin, ymin, xmax, ymax] in VCS
@@ -81,13 +90,42 @@ def draw_parkinglot(canvas_pred, pl_pred, bev_range=[-10, -10, 10, 10], target_s
                     (int(ctr_canvas_x-75), int(ctr_canvas_y-25)), cv2.FONT_HERSHEY_SIMPLEX, 1, text_color[::-1], 2)
     return canvas_pred
 
-def visualize(occ_pred, pl_pred, save_path,ori_img):
-    # occ_pred = occ_pred[0]  # bs=1
-    pl_pred = pl_pred[0]
+def stitch_images_horizontal(img1, img2):
+    """
+    水平拼接两张图片
+    """
+    # 确保两张图片高度相同
+    h1, w1 = img1.shape[:2]
+    h2, w2 = img2.shape[:2]
     
-    # sem_pred = occ_pred.cpu().numpy() if isinstance(occ_pred, torch.Tensor) else occ_pred
-    # canvas_pred = occ2img(semantics=sem_pred)
+    if h1 != h2:
+        # 调整高度到较小值
+        min_height = min(h1, h2)
+        img1 = cv2.resize(img1, (int(w1 * min_height / h1), min_height))
+        img2 = cv2.resize(img2, (int(w2 * min_height / h2), min_height))
+    
+    # 水平拼接
+    stitched = np.hstack((img1, img2))
+    return stitched
+
+def visualize(occ_pred, pl_pred, save_path,ori_img):
+    occ_pred = occ_pred[0]  # bs=1
+    # pl_pred = pl_pred[0]
+    
+    sem_pred = occ_pred.cpu().numpy() if isinstance(occ_pred, torch.Tensor) else occ_pred
+    canvas_pred = occ2img(semantics=sem_pred)
     # canvas_pred = np.zeros((1600,1600, 3), dtype=np.uint8)
-    canvas_pred = ori_img
-    canvas_pred = draw_parkinglot(canvas_pred, pl_pred)
-    cv2.imwrite(save_path, canvas_pred)
+    # canvas_pred = ori_img
+    # canvas_pred = draw_parkinglot(canvas_pred, pl_pred)
+
+    # canvas_pred = cv2.cvtColor(canvas_pred, cv2.COLOR_BGR2GRAY)
+
+    # 二值化掩码（如果不是二值图）
+    # _, seg_mask = cv2.threshold(canvas_pred, 127, 255, cv2.THRESH_BINARY)
+
+    # 叠加分割结果（绿色，50%透明度）
+    # result = overlay_segmentation(ori_img, seg_mask, color=[0, 255, 0], alpha=0.5)
+
+    result = stitch_images_horizontal(ori_img,canvas_pred)
+
+    cv2.imwrite(save_path, result)
