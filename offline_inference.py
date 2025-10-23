@@ -13,6 +13,7 @@ from preprocess.preprocess import preprocess, PrepareParameter
 from postprocess.vis import visualize
 from dataset.offline_image_dataset import OfflineImageDataset
 from utils.cam_params import params
+from postprocess.metric_counter import MetricCounter
 
 def main():
     parser = argparse.ArgumentParser(description="Offline image inference script")
@@ -64,6 +65,8 @@ def main():
     
     print(f"Processing samples from {start_idx} to {end_idx}")
 
+    counter = MetricCounter()
+
     for idx in range(start_idx, end_idx):
         try:
             all_data = dataset.get_data_info(idx)
@@ -73,7 +76,6 @@ def main():
 
             new_img_path = all_data['curr']['cams']['CAM_BEV_SEGMENTATION']['data_path']
             parking_info_gt = all_data['curr']['parking_lots']
-            # new_img_path = img_path.replace('data/carla_bev/','data/carla_bev_infer_data_fast/')
             print(new_img_path)
             img_name = os.path.basename(new_img_path)
             img = cv2.imread(new_img_path)
