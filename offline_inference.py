@@ -20,7 +20,7 @@ def main():
         "--config", type=str, default="model_interface/config/freespace_occ2d_r50_depth.py"
     )
     parser.add_argument(
-        "--weights", type=str, default="only_pld_head_1020_run/best_val_loss_epoch_023.pth"
+        "--weights", type=str, default="only_pld_head_1020_run/best_val_loss_epoch_041.pth"
     )
     parser.add_argument(
         "--data_root", type=str, default="data/carla_bev", help="Path to image data directory"
@@ -29,7 +29,7 @@ def main():
         "--annotation_file", type=str, default="data/carla_bev/0801_all_51725_train_100_samples.pkl", help="Path to annotation file (optional)"
     )
     parser.add_argument(
-        "--vis", type=str, default="./vis_output023", help="Directory for output visualization"
+        "--vis", type=str, default="./vis_output041_gt_temp2", help="Directory for output visualization"
     )
     parser.add_argument(
         "--start_idx", type=int, default=0, help="Start index for processing"
@@ -72,6 +72,7 @@ def main():
                 continue
 
             new_img_path = all_data['curr']['cams']['CAM_BEV_SEGMENTATION']['data_path']
+            parking_info_gt = all_data['curr']['parking_lots']
             # new_img_path = img_path.replace('data/carla_bev/','data/carla_bev_infer_data_fast/')
             print(new_img_path)
             img_name = os.path.basename(new_img_path)
@@ -94,7 +95,7 @@ def main():
                 if args.vis is not None:
                     timestamp = all_data.get('timestamp', idx)
                     save_path = os.path.join(args.vis, img_name)
-                    visualize(occ_pred, pl_pred, save_path,img)
+                    visualize(occ_pred, pl_pred, save_path,img,parking_info_gt)
                 toc3 = time.time()
                 print(f"Sample {idx} - Time elapsed of visualize: {int(1000*(toc3 - toc2))}ms")
 
