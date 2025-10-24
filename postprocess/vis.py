@@ -29,7 +29,7 @@ def occ2img(semantics=None, target_size=(1600, 1600)):
         viz[semantics[..., 0] == i] = FreespacePalette[i][::-1]     # to BGR for cv2
 
     viz = viz[::-1, ::-1, ...]
-    viz = cv2.resize(viz, dsize=target_size, interpolation=cv2.INTER_NEAREST)
+    # viz = cv2.resize(viz, dsize=target_size, interpolation=cv2.INTER_NEAREST)
     return viz
 
 def overlay_segmentation(base_img, seg_mask, color=[0, 255, 0], alpha=0.5):
