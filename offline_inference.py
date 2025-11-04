@@ -13,7 +13,7 @@ from preprocess.preprocess import preprocess, PrepareParameter
 from postprocess.vis import visualize
 from dataset.offline_image_dataset import OfflineImageDataset
 from utils.cam_params import params
-from postprocess.metric_counter import MetricCounter
+from postprocess.metric_counter import MetricCounter,decode_pl_pred_any,decode_pl_gt,update_metrics
 
 def main():
     parser = argparse.ArgumentParser(description="Offline image inference script")
@@ -27,10 +27,11 @@ def main():
         "--data_root", type=str, default="data/carla_bev", help="Path to image data directory"
     )
     parser.add_argument(
-        "--annotation_file", type=str, default="data/carla_bev/0801_all_51725_train_100_samples.pkl", help="Path to annotation file (optional)"
+        # "--annotation_file", type=str, default="data/carla_bev/0801_all_51725_test_1000_samples.pkl", help="Path to annotation file (optional)"
+        "--annotation_file", type=str, default="data/carla_bev/1031_all_445.pkl", help="Path to annotation file (optional)"
     )
     parser.add_argument(
-        "--vis", type=str, default="./vis_output041_gt_temp2", help="Directory for output visualization"
+        "--vis", type=str, default='1031_new_Res1', help="Directory for output visualization"
     )
     parser.add_argument(
         "--start_idx", type=int, default=0, help="Start index for processing"
@@ -93,7 +94,6 @@ def main():
                 print(f"Sample {idx} - Time elapsed of model: {int(1000*(toc2 - toc1))}ms")
 
                 occ_pred = None
-                
                 if args.vis is not None:
                     timestamp = all_data.get('timestamp', idx)
                     save_path = os.path.join(args.vis, img_name)
@@ -101,11 +101,19 @@ def main():
                 toc3 = time.time()
                 print(f"Sample {idx} - Time elapsed of visualize: {int(1000*(toc3 - toc2))}ms")
 
+                #性能评估
+                pred_list = decode_pl_pred_any(pl_pred)
+                gt_list = decode_pl_gt(parking_info_gt)
+                update_metrics(counter,pred_list,gt_list)
+
             print(f"Sample {idx} - Total time elapsed: {int(1000*(toc3 - tic))}ms\n")
             
         except Exception as e:
             print(f"Error processing sample {idx}: {e}")
             continue
+    
+    print("report:=========================================")
+    print(counter.report())
 
 if __name__ == "__main__":
     main() 

@@ -1,14 +1,14 @@
 import mmcv, numpy as np
 
 src = 'data/carla_bev/0801_all_51725.pkl'
-dst_train = 'data/carla_bev/0801_all_51725_train.pkl'
-dst_val   = 'data/carla_bev/0801_all_51725_val.pkl'
-dst_test  = 'data/carla_bev/0801_all_51725_test.pkl'  # 可选
+dst_train = 'data/carla_bev/0801_all_51725_train_v1.pkl'
+dst_val   = 'data/carla_bev/0801_all_51725_val_v1.pkl'
+dst_test  = 'data/carla_bev/0801_all_51725_test_v1.pkl'  # 可选
 
 data = mmcv.load(src, file_format='pkl')
 idx = np.arange(len(data))
-np.random.seed(42)
-np.random.shuffle(idx)
+# np.random.seed(42)
+# np.random.shuffle(idx)
 
 n = len(idx)
 n_train = int(0.8 * n)

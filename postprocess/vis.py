@@ -190,8 +190,9 @@ def visualize(occ_pred, pl_pred, save_path,ori_img,pl_gt = None):
     # canvas_pred = np.zeros((1600,1600, 3), dtype=np.uint8)
     canvas_pred = ori_img
     if pl_gt is not None:
+        print("fefoe")
         gt_vis = draw_slots_on_bev(pl_gt, canvas_pred)
     canvas_pred = draw_parkinglot(canvas_pred, pl_pred)
 
-    result = stitch_images_horizontal(ori_img,canvas_pred)
+    result = stitch_images_horizontal(gt_vis,canvas_pred)
     cv2.imwrite(save_path, result)

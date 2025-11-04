@@ -2,6 +2,7 @@
 import numpy as np
 import cv2
 from collections import defaultdict
+import torch
 
 # ===== 标签定义（统一到0-based）=====
 CAT_ID2NAME = {0: "Perp", 1: "Para", 2: "Others"}
@@ -9,11 +10,115 @@ STAT_ID2NAME = {0: "Vac", 1: "vehOcc", 2: "otherOcc"}
 
 # ========== 工具函数 ==========
 def _to_np(a):
-    if hasattr(a, "detach"):  # torch tensor
-        a = a.detach().cpu().numpy()
+    if isinstance(a,torch.Tensor):
+        return a.detach().cpu().numpy()
+
+    if isinstance(a,(list,tuple)):
+        return np.array([_to_np(x) for x in a],dtype = object)
     return np.asarray(a)
 
-def decode_pl_pred(pl_pred_item):
+
+def _to_np_cpu(x):
+    if isinstance(x, torch.Tensor):
+        return x.detach().cpu().numpy()
+    return np.asarray(x)
+
+def _pick_task(field, task_index=None):
+    """
+    field 可能是：tensor/ndarray，或 list/tuple (按 task 列表)
+    - 若是 list/tuple 并且 task_index is not None，则取对应 task
+    - 否则原样返回
+    """
+
+    if isinstance(field, (list, tuple)) and len(field) > 0:
+        # 如果没指定task，就默认取0（和你原始“task_id==1”的含义保持）
+        ti = 0 if task_index is None else int(task_index)
+        if ti >= len(field):
+            raise IndexError(f"task_index={ti} 越界，当前可选任务数={len(field)}")
+        return field[ti]
+    return field
+
+def _stack_kpses(kpses):
+    """
+    kpses 支持两种：
+      1) list/tuple 长度=4，每个是 (N,2)
+      2) (N,4,2) tensor/ndarray
+    输出统一为 (N,4,2) numpy
+    """
+
+    if isinstance(kpses, (list, tuple)):
+        # list len=4
+        if len(kpses) != 4:
+            raise ValueError(f"kpses 长度应为4，得到 {len(kpses)}")
+        if isinstance(kpses[0], torch.Tensor):
+            K = torch.stack(kpses, dim=1).detach().cpu().numpy()  # (N,4,2)
+        else:
+            K = np.stack([_to_np_cpu(k) for k in kpses], axis=1)  # (N,4,2)
+        return K
+    else:
+        # 直接是 (N,4,2)
+        K = _to_np_cpu(kpses)
+        if K.ndim != 3 or K.shape[1] != 4 or K.shape[2] != 2:
+            raise ValueError(f"kpses 形状应为 (N,4,2)，得到 {K.shape}")
+        return K
+
+def decode_pl_pred_any(pl_pred,batch_index=0,task_index=None):
+    """
+    通用解码：把模型输出的 pl_pred 解成 slot list
+    支持以下结构：
+      - pl_pred[batch] -> (centers, scores, labels, statuses, kpses)
+      - 字段是多 task 的 list/tuple，可用 task_index 指定要哪个 task
+
+    返回: list[dict]，每个 dict 包含：
+      { 'center':(2,), 'score':float, 'cat':int, 'stat':int, 'kps':(4,2) }
+    """
+
+    # 1) 取 batch
+    elem = pl_pred
+    if isinstance(pl_pred, (list, tuple)) and len(pl_pred) > 0 and isinstance(pl_pred[0], (list, tuple, torch.Tensor, np.ndarray)):
+        # 常见：按 batch list
+        if batch_index >= len(pl_pred):
+            raise IndexError(f"batch_index={batch_index} 越界，batch 数={len(pl_pred)}")
+        elem = pl_pred[batch_index]
+
+    # 2) 拆字段
+    if not isinstance(elem, (list, tuple)) or len(elem) < 5:
+        raise ValueError("pl_pred 单帧应包含5个字段: centers, scores, labels, statuses, kpses")
+    centers, scores, labels, statuses, kpses = elem
+
+    # 3) 可选的 task 选择（若字段是按 task 的列表/元组）
+    centers  = _pick_task(centers,  task_index)
+    scores   = _pick_task(scores,   task_index)
+    labels   = _pick_task(labels,   task_index)
+    statuses = _pick_task(statuses, task_index)
+    kpses    = _pick_task(kpses,    task_index)
+
+    # 4) 统一到 numpy，并确保不误切 N 维
+    C  = _to_np_cpu(centers)                      # (N,2)
+    S  = _to_np_cpu(scores).reshape(-1)           # (N,)
+    L  = _to_np_cpu(labels).reshape(-1).astype(int)
+    ST = _to_np_cpu(statuses).reshape(-1).astype(int)
+    K  = _stack_kpses(kpses).astype(float)        # (N,4,2)
+    N = C.shape[0]
+    assert S.shape[0] == N and L.shape[0] == N and ST.shape[0] == N and K.shape[0] == N, \
+        f"字段长度不一致：C{C.shape}, S{S.shape}, L{L.shape}, ST{ST.shape}, K{K.shape}"
+
+    # 5) 组装输出
+
+    out = []
+    for i in range(N):
+        out.append({
+            "center": C[i].astype(float),
+            "score": float(S[i]),
+            "cat":   int(L[i]),
+            "stat":  int(ST[i]),
+            "kps":   K[i].astype(float)
+        })
+    return out
+
+
+
+def decode_pl_pred_old(pl_pred_item):
     """
     pl_pred_item: model输出的单张图片的pl结果（即你 visualize 里取的 pl_pred[0]）
       结构： [ele[0] for ele in pl_pred] -> centers, scores, labels, statuses, kpses
@@ -127,7 +232,7 @@ def filter_by_choice(items, cat_choice=None, stat_choice=None):
 
 # ========== 匹配与度量累计 ==========
 def match_slots(preds, gts,
-                kp_max_thresh=0.05, iou_thresh=0.8, entry_thresh=0.1):
+                kp_max_thresh=0.1, iou_thresh=0.8, entry_thresh=0.1):
     """
     基于“严格TP规则”做一对一匹配：
       1) 四点对应最大距离 <= kp_max_thresh
@@ -148,7 +253,7 @@ def match_slots(preds, gts,
             iou = polygon_iou_quad(p["kps"], g["kps"])
             kp_max, kp_mean = kp_dist_metrics(p["kps"], g["kps"])
             ent_ok = entry_consistent(p["kps"], g["kps"], entry_thresh)
-            ok = (kp_max <= kp_max_thresh) and (iou >= iou_thresh) and ent_ok
+            ok = (kp_mean <= kp_max_thresh) and (iou >= iou_thresh) and ent_ok
             if ok:
                 # 排序优先按 IoU 高
                 pairs.append((pi, gi, iou))
@@ -205,17 +310,32 @@ class MetricCounter:
             stat_metrics[STAT_ID2NAME[cid]] = {"precision": p, "recall": r, "f1": f1}
 
         return {
-            "DETECTION(strict-3-conds)": {"precision": det_p, "recall": det_r, "f1": det_f1,
-                                          "tp": self.det_tp, "fp": self.det_fp, "fn": self.det_fn,
-                                          "pred": self.pred_count, "gt": self.gt_count},
-            "TYPE(cls@matched)": {"precision": type_p, "recall": type_r, "f1": type_f1,
-                                  "tp": self.type_tp, "fp": self.type_fp, "fn": self.type_fn},
-            "STATUS-3way(cls@matched)": stat_metrics
-        }
+            "Parking lots detection": {
+                "precision": det_p, 
+                "recall": det_r, 
+                "f1": det_f1,
+                "tp": self.det_tp, 
+                "fp": self.det_fp, 
+                "fn": self.det_fn,
+                "pred": self.pred_count, 
+                "gt": self.gt_count
+            },
+
+            "Parking lots type": {
+                "precision": type_p, 
+                "recall": type_r, 
+                "f1": type_f1,
+                "tp": self.type_tp, 
+                "fp": self.type_fp, 
+                "fn": self.type_fn
+            },
+            
+            "Parking lots status": stat_metrics
+    }
 
 def update_metrics(counter: MetricCounter,
                    preds, gts,
-                   kp_max_thresh=0.05, iou_thresh=0.8, entry_thresh=0.1,
+                   kp_max_thresh=0.3, iou_thresh=0.8, entry_thresh=0.3,
                    cat_choice=None, stat_choice=None):
     """
     对单帧进行累计：
@@ -253,41 +373,6 @@ def update_metrics(counter: MetricCounter,
         else:
             counter.status_fp[p["stat"]] += 1
             counter.status_fn[g["stat"]] += 1
-
-# ========== 与你的 offline infer 循环对接示例 ==========
-"""
-把下面这段示例嵌入你的for循环，注意：
-- 从模型输出 pl_pred 拿到单张 pl_pred_item = pl_pred[0]，再 decode_pl_pred()
-- 从 GT all_data['curr']['parking_lots'] 走 decode_pl_gt()
-
-示例（伪代码嵌入点）：
-
-counter = MetricCounter()
-
-for idx in range(start_idx, end_idx):
-    ...
-    with torch.no_grad():
-        infer_data = preprocess(args.config, all_data, input_params)
-        pl_pred = model(return_loss=False, rescale=True, **infer_data)
-        ...
-        # ===== 解码预测与GT =====
-        pred_list = decode_pl_pred(pl_pred[0])
-        gt_list   = decode_pl_gt(all_data['curr']['parking_lots'])
-
-        # ===== 无筛选（总体评估）=====
-        update_metrics(counter, pred_list, gt_list,
-                       kp_max_thresh=0.05, iou_thresh=0.8, entry_thresh=0.1,
-                       cat_choice=None, stat_choice=None)
-
-        # ===== 示例：只评估 Para（平行/水平）=====
-        # update_metrics(counter, pred_list, gt_list, cat_choice={1})
-
-        # ===== 示例：只评估 Vac（空闲）=====
-        # update_metrics(counter, pred_list, gt_list, stat_choice={0})
-
-# 循环结束后：
-print(counter.report())
-"""
 
 # ========== 可选：简单的打印函数 ==========
 def pretty_print_report(report_dict):

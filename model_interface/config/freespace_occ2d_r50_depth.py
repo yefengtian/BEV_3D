@@ -27,9 +27,9 @@ data_config = {
     'src_size': (1080, 1920), # padding -> (1088, 1920) -> (544, 960)
 
     # Augmentation
-    'resize': (0, 0),
-    'rot': (0, 0),
-    'flip': False,
+    'resize': (-0.06, 0.11),
+    'rot': (-5.4, 5.4),
+    'flip': True,
     'crop_h': (0.0, 0.0),
     'resize_test': 0.00
 }
@@ -153,10 +153,10 @@ data_root = 'data/carla_bev/'
 file_client_args = dict(backend='disk')
 
 bda_aug_conf = dict(
-    rot_lim=(-0., 0.),
-    scale_lim=(1., 1.),
-    flip_dx_ratio=0.0,
-    flip_dy_ratio=0.0
+    rot_lim=(-22.5, 22.5),
+    scale_lim=(0.95, 1.05),
+    flip_dx_ratio=0.5,
+    flip_dy_ratio=0.5
 )
 
 train_pipeline = [
@@ -245,7 +245,7 @@ data = dict(
     workers_per_gpu=8,
     train=dict(
         data_root=data_root,
-        ann_file=data_root + '0801_all_51725_train.pkl',
+        ann_file=data_root + '0801_all_51725_train_v1.pkl',
         pipeline=train_pipeline,
         classes=class_names,
         test_mode=False,
@@ -254,12 +254,12 @@ data = dict(
 
     val=dict(
         data_root=data_root,
-        ann_file=data_root + '0801_all_51725_val.pkl',
+        ann_file=data_root + '0801_all_51725_val_v1.pkl',
         pipeline=test_pipeline),
     
     test=dict(
         data_root=data_root,
-        ann_file=data_root + '0801_all_51725_test.pkl',
+        ann_file=data_root + '0801_all_51725_test_v1.pkl',
         pipeline=test_pipeline)
         )
 
