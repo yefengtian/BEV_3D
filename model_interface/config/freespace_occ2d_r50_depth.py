@@ -3,7 +3,8 @@ _base_ = ['./_base_/nus-3d.py',
 
 # 显式导入自定义 Hook（很重要，否则 Registry 找不到）
 custom_imports = dict(
-    imports=['model_interface.mmdet3d.hooks.val_loss_hook'],
+    imports=['model_interface.mmdet3d.hooks.val_loss_hook',
+             'model_interface.mmdet3d.hooks.throughput_hook'],
     allow_failed_imports=False
 )
 
@@ -245,7 +246,7 @@ data = dict(
     workers_per_gpu=8,
     train=dict(
         data_root=data_root,
-        ann_file=data_root + '0801_all_51725_train.pkl',
+        ann_file=data_root + '1103_all_814.pkl',
         pipeline=train_pipeline,
         classes=class_names,
         test_mode=False,
@@ -254,12 +255,12 @@ data = dict(
 
     val=dict(
         data_root=data_root,
-        ann_file=data_root + '0801_all_51725_val.pkl',
+        ann_file=data_root + '1103_all_814.pkl',
         pipeline=test_pipeline),
     
     test=dict(
         data_root=data_root,
-        ann_file=data_root + '0801_all_51725_test.pkl',
+        ann_file=data_root + '1103_all_814.pkl',
         pipeline=test_pipeline)
         )
 
@@ -268,7 +269,7 @@ for key in ['val', 'train', 'test']:
 
 # Optimizer
 optimizer = dict(type='AdamW', lr=1e-4, weight_decay=1e-2)
-optimizer_config = dict(grad_clip=dict(max_norm=0.1, norm_type=2))
+optimizer_config = dict(grad_clip=dict(max_norm=0.01, norm_type=2))
 lr_config = dict(
     policy='CosineAnnealing',
     warmup='linear',
@@ -301,9 +302,13 @@ custom_hooks = [
         type='ValLossHook',
         dataset_cfg=val_for_loss,
         dataloader_cfg=val_loss_dataloader,
-        interval=1,              # 每个 epoch 做一次
+        interval=10,              # 每个 epoch 做一次
         rule='less',             # 越小越好
         filename_tmpl='best_val_loss_epoch_{:03d}.pth'
+    ),
+    dict(
+        type='ThroughputHook',
+        dataloader_cfg=data
     )
 ]
 
